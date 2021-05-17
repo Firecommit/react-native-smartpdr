@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="react-native-smartpdr" src="./assets/react-native-smartpdr-logo.png" width=300>
+  <img alt="react-native-smartpdr" src="./assets/react-native-smartpdr-logo.png" width=480>
 </p>
 <p style="margin-top:20px" align="center">
   SmartPDR(Smartphone-Based Pedestrian Dead Reckoning for Indoor Localization) for React Native.<br/>
