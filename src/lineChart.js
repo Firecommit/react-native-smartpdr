@@ -2,38 +2,21 @@ import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
-export function RealTimeLineChart({ x, y, z }) {
-  const [dataList, setDataList] = React.useState({ x: [0], y: [0], z: [0] });
-  const threshold = 10;
+export function RealTimeLineChart({ dataParam }) {
+  const [dataList, setDataList] = React.useState([0]);
 
   React.useEffect(() => {
-    dataList.x.length > threshold ? dataList.x.shift() : dataList.x.push(x);
-  }, [x]);
-
-  React.useEffect(() => {
-    dataList.y.length > threshold ? dataList.y.shift() : dataList.y.push(y);
-  }, [y]);
-
-  React.useEffect(() => {
-    dataList.z.length > threshold ? dataList.z.shift() : dataList.z.push(z);
-  }, [z]);
+    dataList.push(dataParam);
+  }, [dataParam]);
 
   const data = {
     datasets: [
       {
-        data: dataList.x,
-        color: (opacity = 1) => `rgba(255, 0, 0, ${opacity})`,
-      },
-      {
-        data: dataList.y,
-        color: (opacity = 1) => `rgba(0, 255, 0, ${opacity})`,
-      },
-      {
-        data: dataList.z,
-        color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+        data: dataList,
+        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
       },
     ],
-    legend: ['x-axis', 'y-axis', 'z-axis'],
+    legend: ['Step acceleration'],
   };
 
   return (
@@ -45,9 +28,10 @@ export function RealTimeLineChart({ x, y, z }) {
         chartConfig={chartConfig}
         style={styles.lineChart}
         withShadow={false}
+        withDots={false}
         withInnerLines={false}
         withOuterLines={false}
-        fromZero={true}
+        yAxisSuffix=" G"
         bezier
       />
     </View>
