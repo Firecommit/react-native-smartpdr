@@ -1,16 +1,10 @@
 import React from 'react';
 import { StyleSheet, Button, Text, View } from 'react-native';
 
-export function DetailsScreen({ navigation }) {
+export function StepLengthScreen({ navigation }) {
   return (
     <View style={styles.container}>
-      <Text>Details Screen</Text>
-      <Button
-        title="Go to Feed"
-        onPress={() => {
-          navigation.navigate('Feed');
-        }}
-      />
+      <Text>Step Length Screen</Text>
     </View>
   );
 }
@@ -18,7 +12,7 @@ export function DetailsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f7f7f7',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,11 +1,14 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Appbar, Avatar, useTheme } from 'react-native-paper';
+import { Appbar, useTheme } from 'react-native-paper';
 import { Image } from 'react-native';
 
 import { FeedScreen } from './feed';
-import { DetailsScreen } from './details';
+import { StepEventScreen } from './stepEvent';
+import { HeadingDirectionScreen } from './headingDirection';
+import { StepLengthScreen } from './stepLength';
+import { LocationScreen } from './location';
 
 function Header({ scene, previous, navigation }) {
   const { options } = scene.descriptor;
@@ -55,17 +58,30 @@ export function StackNavigator() {
           ),
         }}
       >
-        <Stack.Screen
-          name="Feed"
-          component={FeedScreen}
-          options={{ headerTitle: 'Feed' }}
-        />
-        <Stack.Screen
-          name="Details"
-          component={DetailsScreen}
-          options={{ headerTitle: 'Details' }}
-        />
+        {Object.entries(StackScreen).map(([rootName, params], idx) => (
+          <Stack.Screen key={idx} name={rootName} {...params} />
+        ))}
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
+const StackScreen = {
+  Feed: { component: FeedScreen, options: { headerTitle: 'Feed' } },
+  StepEvent: {
+    component: StepEventScreen,
+    options: { headerTitle: 'Step Event Detection' },
+  },
+  HeadingDirection: {
+    component: HeadingDirectionScreen,
+    options: { headerTitle: 'Heading Direction Estimation' },
+  },
+  StepLength: {
+    component: StepLengthScreen,
+    options: { headerTitle: 'Step Length Estimation' },
+  },
+  Location: {
+    component: LocationScreen,
+    options: { headerTitle: 'Location Estimation' },
+  },
+};
