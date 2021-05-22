@@ -2,17 +2,11 @@ import React from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 
-export function RealTimeLineChart({ dataParam }) {
-  const [dataList, setDataList] = React.useState([0]);
-
-  React.useEffect(() => {
-    dataList.push(dataParam);
-  }, [dataParam]);
-
+export function RealTimeLineChart({ dataList }) {
   const data = {
     datasets: [
       {
-        data: dataList,
+        data: dataList.step,
         color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
       },
     ],
@@ -31,8 +25,7 @@ export function RealTimeLineChart({ dataParam }) {
         withDots={false}
         withInnerLines={false}
         withOuterLines={false}
-        yAxisSuffix=" G"
-        bezier
+        fromZero={true}
       />
     </View>
   );

@@ -9,8 +9,15 @@ export function StepEventScreen({ navigation }) {
   const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
   const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
   const [subscription, setSubscription] = React.useState(null);
-  Accelerometer.setUpdateInterval(500);
-  Magnetometer.setUpdateInterval(500);
+  const [count, setCount] = React.useState(0);
+  const [dataList, setDataList] = React.useState({
+    z: [],
+    step: [],
+  });
+  const W = 7;
+
+  const euler = EulerAngles(acc, mag);
+  const acc_gcs = LCS2GCS(acc, euler);
 
   const _subscribe = () => {
     const sensor = {
@@ -39,28 +46,35 @@ export function StepEventScreen({ navigation }) {
     };
   }, [navigation]);
 
-  const euler = EulerAngles(acc, mag);
-  const acc_gcs = LCS2GCS(acc, euler);
+  React.useEffect(() => {
+    dataList.z.push(round(HighPassFilter(acc_gcs.z)));
+    let acc_lpf = dataList.z.slice(count, W + count);
+    if (acc_lpf.length === W) {
+      let total = acc_lpf.reduce((sum, e) => {
+        return sum + e;
+      }, 0);
+      if (dataList.step.length >= 50) {
+        dataList.step.shift();
+        dataList.z = dataList.z.slice((W - 1) / 2);
+      }
+      dataList.step.push(total / W);
+      setCount((count) => count + (W - 1) / 2);
+    }
+  }, [acc]);
 
   return (
     <View style={styles.container}>
-      <RealTimeLineChart dataParam={round(AccFilter(acc_gcs.z))} />
-      <Text style={styles.text}>
-        Accelerometer LCS: (in Gs where 1 G = 9.81 m s^-2)
-      </Text>
-      <Text style={styles.text}>
-        x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
-      </Text>
+      <RealTimeLineChart dataList={dataList} />
+      <Text style={styles.title}>Euler Angles</Text>
       <Text style={styles.text}>
         pitch: {round(euler.pitch)} roll: {round(euler.roll)} yaw:{' '}
         {round(euler.yaw)}
       </Text>
+      <Text style={styles.title}>Accelerometer LCS</Text>
       <Text style={styles.text}>
-        Magnetometer: x: {round(mag.x)} y: {round(mag.y)} z: {round(mag.z)}
+        x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
       </Text>
-      <Text style={styles.text}>
-        Accelerometer GCS: (in Gs where 1 G = 9.81 m s^-2)
-      </Text>
+      <Text style={styles.title}>Accelerometer GCS</Text>
       <Text style={styles.text}>
         x: {round(acc_gcs.x)} y: {round(acc_gcs.y)} z: {round(acc_gcs.z)}
       </Text>
@@ -78,11 +92,13 @@ export function StepEventScreen({ navigation }) {
   );
 }
 
-function AccFilter(acc_gcs_z) {
+var prev_g = 1;
+function HighPassFilter(acc_gcs_z) {
   let alpha = 0.9;
-  let g = alpha + (1 - alpha) * acc_gcs_z;
+  let g = alpha * prev_g + (1 - alpha) * acc_gcs_z;
   let acc_hpf = acc_gcs_z - g;
-  return acc_hpf;
+  prev_g = g;
+  return acc_hpf * 9.81;
 }
 
 function LCS2GCS(acc_lcs, euler) {
@@ -150,9 +166,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  title: {
+    textAlign: 'center',
+    color: '#000',
+    fontWeight: 'bold',
+  },
   text: {
     textAlign: 'center',
     color: '#707070',
+    marginBottom: 8,
   },
   buttonContainer: {
     flexDirection: 'row',
