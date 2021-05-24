@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { Accelerometer, Magnetometer } from 'expo-sensors';
+import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
 import { RealTimeLineChart } from './lineChart';
@@ -8,16 +8,21 @@ import { RealTimeLineChart } from './lineChart';
 export function StepEventScreen({ navigation }) {
   const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
   const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
+  const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
+  const [gyrDeg, setGyrDeg] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
   const [subscription, setSubscription] = React.useState(null);
   const [count, setCount] = React.useState(0);
-  const [dataList, setDataList] = React.useState({
-    z: [],
-    step: [],
-  });
-  const W = 7;
+  const [accStep, setAccStep] = React.useState(0);
+  const [accHPF, setAccHPF] = React.useState([]);
+  const W = 5;
+  const dt = 100;
 
-  const euler = EulerAngles(acc, mag);
+  const euler = EulerAngles(acc, mag, gyrDeg);
   const acc_gcs = LCS2GCS(acc, euler);
+
+  Accelerometer.setUpdateInterval(dt);
+  Magnetometer.setUpdateInterval(dt);
+  Gyroscope.setUpdateInterval(dt);
 
   const _subscribe = () => {
     const sensor = {
@@ -27,6 +32,15 @@ export function StepEventScreen({ navigation }) {
       mag: Magnetometer.addListener((magnetometerData) => {
         setMag(magnetometerData);
       }),
+      gyr: Gyroscope.addListener((gyroscopeData) => {
+        setGyrDeg((deg) => {
+          deg.pitch += ((gyr.x + gyroscopeData.x) * (dt / 1000)) / 2;
+          deg.roll += ((gyr.y + gyroscopeData.y) * (dt / 1000)) / 2;
+          deg.yaw += ((gyr.z + gyroscopeData.z) * (dt / 1000)) / 2;
+          return deg;
+        });
+        setGyr(gyroscopeData);
+      }),
     };
     setSubscription(sensor);
   };
@@ -34,6 +48,7 @@ export function StepEventScreen({ navigation }) {
   const _unsubscribe = () => {
     subscription.acc.remove();
     subscription.mag.remove();
+    subscription.gyr.remove();
     setSubscription(null);
   };
 
@@ -42,59 +57,62 @@ export function StepEventScreen({ navigation }) {
     return () => {
       Accelerometer.removeAllListeners();
       Magnetometer.removeAllListeners();
+      Gyroscope.removeAllListeners();
       _unsubscribe;
     };
   }, [navigation]);
 
   React.useEffect(() => {
-    dataList.z.push(round(HighPassFilter(acc_gcs.z)));
-    let acc_lpf = dataList.z.slice(count, W + count);
-    if (acc_lpf.length === W) {
-      let total = acc_lpf.reduce((sum, e) => {
+    setAccHPF([...accHPF, round(HighPassFilter(acc_gcs.z))]);
+    let windowList = accHPF.slice(count, W + count);
+    if (windowList.length === W) {
+      let total = windowList.reduce((sum, e) => {
         return sum + e;
       }, 0);
-      if (dataList.step.length >= 50) {
-        dataList.step.shift();
-        dataList.z = dataList.z.slice((W - 1) / 2);
-      }
-      dataList.step.push(total / W);
+      setAccStep(total / W);
       setCount((count) => count + (W - 1) / 2);
     }
   }, [acc]);
 
   return (
-    <View style={styles.container}>
-      <RealTimeLineChart dataList={dataList} />
-      <Text style={styles.title}>Euler Angles</Text>
-      <Text style={styles.text}>
-        pitch: {round(euler.pitch)} roll: {round(euler.roll)} yaw:{' '}
-        {round(euler.yaw)}
-      </Text>
-      <Text style={styles.title}>Accelerometer LCS</Text>
-      <Text style={styles.text}>
-        x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
-      </Text>
-      <Text style={styles.title}>Accelerometer GCS</Text>
-      <Text style={styles.text}>
-        x: {round(acc_gcs.x)} y: {round(acc_gcs.y)} z: {round(acc_gcs.z)}
-      </Text>
-      <View style={styles.buttonContainer}>
-        <Button
-          style={styles.button}
-          dark={true}
-          mode={subscription ? 'contained' : 'outlined'}
-          onPress={subscription ? _unsubscribe : _subscribe}
-        >
-          {subscription ? 'On' : 'Off'}
-        </Button>
+    <>
+      <View style={styles.container}>
+        <RealTimeLineChart step={round(accStep)} />
+        <Text style={styles.title}>Euler Angles</Text>
+        <Text style={styles.text}>
+          pitch: {round(euler.pitch)} roll: {round(euler.roll)} yaw:{' '}
+          {round(euler.yaw)}
+        </Text>
+        <Text style={styles.title}>LCS Accelerometer</Text>
+        <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
+        <Text style={styles.text}>
+          x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
+        </Text>
+        <Text style={styles.title}>GCS Accelerometer</Text>
+        <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
+        <Text style={styles.text}>
+          x: {round(acc_gcs.x)} y: {round(acc_gcs.y)} z: {round(acc_gcs.z)}
+        </Text>
+        <Text style={styles.title}>Step Acceleration</Text>
+        <Text style={styles.text}>z: {round(accStep)} [m s^-2]</Text>
+        <View style={styles.buttonContainer}>
+          <Button
+            style={styles.button}
+            dark={true}
+            mode={subscription ? 'contained' : 'outlined'}
+            onPress={subscription ? _unsubscribe : _subscribe}
+          >
+            {subscription ? 'On' : 'Off'}
+          </Button>
+        </View>
       </View>
-    </View>
+    </>
   );
 }
 
 var prev_g = 1;
 function HighPassFilter(acc_gcs_z) {
-  let alpha = 0.9;
+  let alpha = 0.95;
   let g = alpha * prev_g + (1 - alpha) * acc_gcs_z;
   let acc_hpf = acc_gcs_z - g;
   prev_g = g;
@@ -136,21 +154,26 @@ function LCS2GCS(acc_lcs, euler) {
   return acc_gcs;
 }
 
-function EulerAngles(acc, mag) {
-  let R = {
-    pitch:
-      Math.atan2(-acc.x, Math.sqrt(acc.y * acc.y + acc.z * acc.z)) *
-      (180 / Math.PI),
-    roll: Math.atan2(acc.y, acc.z) * (180 / Math.PI),
+function EulerAngles(acc, mag, gyrDeg) {
+  let roll = Math.atan2(acc.y, acc.z);
+  let pitch = Math.atan2(
+    -acc.x,
+    acc.y * Math.sin(roll) + acc.z * Math.cos(roll)
+  );
+  let yaw = Math.atan2(
+    mag.z * Math.sin(roll) - mag.y * Math.cos(roll),
+    mag.x * Math.cos(pitch) +
+      mag.y * Math.sin(pitch) * Math.sin(roll) +
+      mag.z * Math.sin(pitch) * Math.cos(roll)
+  );
+
+  //return { pitch: pitch, roll: roll, yaw: yaw };
+  let alpha = 0.95;
+  return {
+    pitch: alpha * gyrDeg.pitch + (1 - alpha) * pitch,
+    roll: alpha * gyrDeg.roll + (1 - alpha) * roll,
+    yaw: alpha * gyrDeg.yaw + (1 - alpha) * yaw,
   };
-  let D = {
-    x:
-      Math.cos(R.pitch) * mag.x +
-      Math.sin(R.pitch) * Math.sin(R.roll) * mag.y +
-      Math.sin(R.pitch) * Math.cos(R.roll) * mag.z,
-    y: Math.cos(R.roll) * mag.y - Math.sin(R.roll) * mag.z,
-  };
-  return { ...R, yaw: Math.atan2(-D.y, D.x) * (180 / Math.PI) };
 }
 
 function round(n) {
@@ -181,5 +204,14 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     marginTop: 15,
   },
-  button: { margin: 8 },
+  button: {},
+  shadow: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowRadius: 2,
+    shadowOpacity: 1,
+  },
 });
