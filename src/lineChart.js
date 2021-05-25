@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Platform, Dimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
-import { Surface } from 'react-native-paper';
+import { Surface, ActivityIndicator, useTheme } from 'react-native-paper';
 
 const html = require('../assets/html/index.html');
 
@@ -22,7 +22,7 @@ const getSource = (file) => {
 const styles = StyleSheet.create({
   canvas: {
     width: Dimensions.get('window').width - 16,
-    height: 260,
+    height: 270,
     marginVertical: 8,
     borderRadius: 16,
     elevation: 4,
@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
 });
 
 export function RealTimeLineChart({ step }) {
+  const theme = useTheme();
   const [file, setFile] = React.useState(null);
   const [code, setCode] = React.useState(null);
   const webref = React.useRef(null);
@@ -65,7 +66,7 @@ export function RealTimeLineChart({ step }) {
         options: {
           fill: false,
           interaction: {
-            intersect: false
+            intersect: true
           },
           radius: 0,
         },
@@ -80,7 +81,7 @@ export function RealTimeLineChart({ step }) {
       step.push(${step});
       chart.data.labels.push(formatDate(new Date()));
 
-      if(step.length > 100) {
+      if(step.length > 50) {
         step.shift();
         chart.data.labels.shift();
       }
@@ -96,9 +97,19 @@ export function RealTimeLineChart({ step }) {
         allowFileAccess={true}
         source={getSource(file)}
         javaScriptEnabled={true}
+        domStorageEnabled={true}
         onMessage={(event) => {}}
         injectedJavaScript={code}
-        startInLoadingState
+        renderLoading={() => {
+          return (
+            <ActivityIndicator
+              style={{ position: 'absolute', width: '100%', height: '100%' }}
+              animating={true}
+              color={theme.colors.primary}
+            />
+          );
+        }}
+        startInLoadingState={true}
       />
     </Surface>
   );

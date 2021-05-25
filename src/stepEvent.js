@@ -11,10 +11,12 @@ export function StepEventScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
   const [gyrDeg, setGyrDeg] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
   const [subscription, setSubscription] = React.useState(null);
-  const [count, setCount] = React.useState(0);
   const [accStep, setAccStep] = React.useState(0);
-  const [accHPF, setAccHPF] = React.useState([]);
-  const W = 5;
+  const [windowList, setWindowList] = React.useState([]);
+  const [timeList, setTimeList] = React.useState([]);
+  const [stepCount, setStepCount] = React.useState(0);
+  const W = 3;
+  const N = 8;
   const dt = 100;
 
   const euler = EulerAngles(acc, mag, gyrDeg);
@@ -63,51 +65,98 @@ export function StepEventScreen({ navigation }) {
   }, [navigation]);
 
   React.useEffect(() => {
-    setAccHPF([...accHPF, round(HighPassFilter(acc_gcs.z))]);
-    let windowList = accHPF.slice(count, W + count);
+    setWindowList([...windowList, round(HighPassFilter(acc_gcs.z))]);
     if (windowList.length === W) {
       let total = windowList.reduce((sum, e) => {
         return sum + e;
       }, 0);
+      setTimeList([...timeList, round(total / W)]);
+      if (timeList.length >= N + 1) {
+        let t = StepTimeDetection(timeList, N);
+        if (t.peak && t.pp && t.slope) setStepCount((c) => c + 1);
+        setTimeList(timeList.slice(1));
+      }
       setAccStep(total / W);
-      setCount((count) => count + (W - 1) / 2);
+      setWindowList((wl) => wl.slice((W - 1) / 2));
     }
   }, [acc]);
 
   return (
-    <>
-      <View style={styles.container}>
-        <RealTimeLineChart step={round(accStep)} />
-        <Text style={styles.title}>Euler Angles</Text>
-        <Text style={styles.text}>
-          pitch: {round(euler.pitch)} roll: {round(euler.roll)} yaw:{' '}
-          {round(euler.yaw)}
-        </Text>
-        <Text style={styles.title}>LCS Accelerometer</Text>
-        <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
-        <Text style={styles.text}>
-          x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
-        </Text>
-        <Text style={styles.title}>GCS Accelerometer</Text>
-        <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
-        <Text style={styles.text}>
-          x: {round(acc_gcs.x)} y: {round(acc_gcs.y)} z: {round(acc_gcs.z)}
-        </Text>
-        <Text style={styles.title}>Step Acceleration</Text>
-        <Text style={styles.text}>z: {round(accStep)} [m s^-2]</Text>
-        <View style={styles.buttonContainer}>
-          <Button
-            style={styles.button}
-            dark={true}
-            mode={subscription ? 'contained' : 'outlined'}
-            onPress={subscription ? _unsubscribe : _subscribe}
-          >
-            {subscription ? 'On' : 'Off'}
-          </Button>
-        </View>
+    <View style={styles.container}>
+      <RealTimeLineChart step={round(accStep)} />
+      <Text style={styles.title}>Euler Angles</Text>
+      <Text style={styles.text}>
+        pitch: {round(euler.pitch)} roll: {round(euler.roll)} yaw:{' '}
+        {round(euler.yaw)}
+      </Text>
+      <Text style={styles.title}>LCS Accelerometer</Text>
+      <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
+      <Text style={styles.text}>
+        x: {round(acc.x)} y: {round(acc.y)} z: {round(acc.z)}
+      </Text>
+      <Text style={styles.title}>GCS Accelerometer</Text>
+      <Text style={styles.title}>(in Gs where 1 G = 9.81 m s^-2)</Text>
+      <Text style={styles.text}>
+        x: {round(acc_gcs.x)} y: {round(acc_gcs.y)} z: {round(acc_gcs.z)}
+      </Text>
+      <Text style={styles.title}>Step Acceleration</Text>
+      <Text style={styles.text}>z: {round(accStep)} [m s^-2]</Text>
+      <Text style={styles.title}>Step Count</Text>
+      <Text style={styles.text}>count: {stepCount}</Text>
+      <View style={styles.buttonContainer}>
+        <Button
+          style={styles.button}
+          dark={true}
+          mode={subscription ? 'contained' : 'outlined'}
+          onPress={subscription ? _unsubscribe : _subscribe}
+        >
+          {subscription ? 'On' : 'Off'}
+        </Button>
       </View>
-    </>
+    </View>
   );
+}
+
+function StepTimeDetection(timeList, N) {
+  let acc_peak = 0.3;
+  let acc_pp = 0.6;
+  let t = N / 2;
+  let condition = { peak: false, pp: false, slope: false };
+
+  // the peak point of time exceeding the threshold acc_peak
+  if (timeList[t] > acc_peak) {
+    for (i = -N / 2; i <= N / 2; i++) {
+      if (i === 0) continue;
+      if (timeList[t] > timeList[t + i]) {
+        condition.peak = true;
+        break;
+      }
+    }
+  }
+
+  // the set of time point that the largest difference
+  // between the current peak and both of previous and next valley
+  let diff = { prev: [], next: [] };
+  for (i = 1; i <= N / 2; i++) {
+    diff.prev.push(Math.abs(timeList[t] - timeList[t - i]));
+    diff.next.push(Math.abs(timeList[t] - timeList[t + i]));
+  }
+  if (Math.max(...diff.prev) > acc_pp && Math.max(...diff.next) > acc_pp) {
+    condition.pp = true;
+  }
+
+  // the point of time that shows increment on the frontside
+  // and decrement on the backside
+  let sum = { pos: 0, neg: 0 };
+  for (i = t - N / 2; i <= t - 1; i++) {
+    sum.pos = timeList[i + 1] - timeList[i];
+  }
+  for (i = t + 1; i <= t + N / 2; i++) {
+    sum.neg = timeList[i] - timeList[i - 1];
+  }
+  if ((2 / N) * sum.pos > 0 && (2 / N) * sum.neg < 0) condition.slope = true;
+
+  return condition;
 }
 
 var prev_g = 1;
