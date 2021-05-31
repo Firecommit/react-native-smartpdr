@@ -18,7 +18,6 @@ export function HeadingDirectionScreen({ navigation }) {
   const [gyrAng, setGyrAng] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
 
   // Custom Hooks
-  // Euler angle using Sensor fusion with complementary filter
   const euler = EulerAngles(acc, mag, gyrAng, prevEuler);
   const prevEuler = usePrevious(euler);
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
@@ -123,9 +122,9 @@ export function HeadingDirectionScreen({ navigation }) {
         return b;
       });
       setCorrGyr((g) => {
-        g.x = gyr.x - -bias.x;
-        g.y = gyr.y - -bias.y;
-        g.z = gyr.z - -bias.z;
+        g.x = alpha * gyr.x + (1 - alpha) * -bias.x;
+        g.y = alpha * gyr.y + (1 - alpha) * -bias.y;
+        g.z = alpha * gyr.z + (1 - alpha) * -bias.z;
         return g;
       });
 
