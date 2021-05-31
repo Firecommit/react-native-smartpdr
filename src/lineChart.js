@@ -1,8 +1,8 @@
 import React from 'react';
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { StyleSheet, View, Platform, Dimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
-import { Surface, ActivityIndicator, useTheme } from 'react-native-paper';
+import { ActivityIndicator, useTheme } from 'react-native-paper';
 
 const html = require('../assets/html/index.html');
 
@@ -20,16 +20,26 @@ const getSource = (file) => {
 };
 
 const styles = StyleSheet.create({
+  canvasContainer: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 2,
+      height: 2,
+    },
+    shadowRadius: 4,
+    shadowOpacity: 0.3,
+    elevation: 4,
+  },
   canvas: {
+    overflow: 'hidden',
     width: Dimensions.get('window').width - 16,
     height: 270,
-    marginVertical: 8,
-    borderRadius: 16,
-    elevation: 4,
+    marginVertical: 16,
+    borderRadius: 8,
   },
 });
 
-export function RealTimeLineChart({ step }) {
+export function RealTimeLineChart({ title, data }) {
   const theme = useTheme();
   const [file, setFile] = React.useState(null);
   const [code, setCode] = React.useState(null);
@@ -55,7 +65,7 @@ export function RealTimeLineChart({ step }) {
           labels: [],
           datasets: [
             {
-              label: 'Step Acceleration',
+              label: '${title}',
               data: [],
               backgroundColor: 'rgba(0, 0, 0, 1)',
               borderColor: 'rgb(0, 0, 0, 1)',
@@ -78,39 +88,41 @@ export function RealTimeLineChart({ step }) {
   React.useEffect(() => {
     let updateCode = `
       var step = chart.data.datasets[0].data;
-      step.push(${step});
+      step.push(${data});
       chart.data.labels.push(formatDate(new Date()));
 
-      if(step.length > 50) {
+      if(step.length > 150) {
         step.shift();
         chart.data.labels.shift();
       }
       chart.update('none');
     `;
     webref.current.injectJavaScript(updateCode);
-  }, [step]);
+  }, [data]);
 
   return (
-    <Surface style={styles.canvas}>
-      <WebView
-        ref={webref}
-        allowFileAccess={true}
-        source={getSource(file)}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        onMessage={(event) => {}}
-        injectedJavaScript={code}
-        renderLoading={() => {
-          return (
-            <ActivityIndicator
-              style={{ position: 'absolute', width: '100%', height: '100%' }}
-              animating={true}
-              color={theme.colors.primary}
-            />
-          );
-        }}
-        startInLoadingState={true}
-      />
-    </Surface>
+    <View style={styles.canvasContainer}>
+      <View style={styles.canvas}>
+        <WebView
+          ref={webref}
+          allowFileAccess={true}
+          source={getSource(file)}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          onMessage={(event) => {}}
+          injectedJavaScript={code}
+          renderLoading={() => {
+            return (
+              <ActivityIndicator
+                style={{ position: 'absolute', width: '100%', height: '100%' }}
+                animating={true}
+                color={theme.colors.primary}
+              />
+            );
+          }}
+          startInLoadingState={true}
+        />
+      </View>
+    </View>
   );
 }
