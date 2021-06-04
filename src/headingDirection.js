@@ -1,13 +1,13 @@
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
 // custom module
 import { styles } from './utils/styles';
-import { degree, EulerAngles, LCS2GCS, round } from './utils/sensors_utils';
+import { compFilter, degree, LCS2GCS, round } from './utils/sensors_utils';
 import { RealTimeLineChart } from './lineChart';
-import { usePrevious } from './utils/customHooks';
+import { usePrevious, useGyrAngle, useEulerAngle } from './utils/customHooks';
 
 export function HeadingDirectionScreen({ navigation }) {
   // Listeners
@@ -15,11 +15,10 @@ export function HeadingDirectionScreen({ navigation }) {
   const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
   const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyrAng, setGyrAng] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
 
   // Custom Hooks
-  const euler = EulerAngles(acc, mag, gyrAng, prevEuler);
-  const prevEuler = usePrevious(euler);
+  const gyrAng = useGyrAngle(gyr);
+  const euler = useEulerAngle(acc, mag);
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
   const prevGravity = usePrevious(gravity);
   const [headingMag, setHeadingMag] = React.useState(0);
@@ -35,7 +34,6 @@ export function HeadingDirectionScreen({ navigation }) {
   // Constant declarations
   const dt = 100;
   const h_decline = -(7 * Math.PI) / 180;
-  const alpha = 0.95;
 
   Accelerometer.setUpdateInterval(dt);
   Magnetometer.setUpdateInterval(dt);
@@ -93,25 +91,16 @@ export function HeadingDirectionScreen({ navigation }) {
     !prevGravity
       ? setGravity({
           ...gravity,
-          z: alpha * gravity.z + (1 - alpha) * acc_gcs.z,
+          z: compFilter(gravity.z, acc_gcs.z),
         })
       : setGravity({
           ...gravity,
-          z: alpha * prevGravity.z + (1 - alpha) * acc_gcs.z,
+          z: compFilter(prevGravity.z, acc_gcs.z),
         });
   }, [acc]);
 
   React.useEffect(() => {
-    setGyrAng((angle) => {
-      angle.pitch += gyr.x * (dt / 1000);
-      angle.roll += gyr.x * (dt / 1000);
-      angle.yaw += gyr.x * (dt / 1000);
-      return angle;
-    });
-
-    if (prevEuler) {
-      setStackAng([...stackAng, JSON.stringify(gyrAng)]);
-    }
+    setStackAng([...stackAng, JSON.stringify(gyrAng)]);
     if (stackAng.length > 1) {
       let start = JSON.parse(stackAng[0]),
         end = JSON.parse(stackAng.slice(-1)[0]);
@@ -122,9 +111,9 @@ export function HeadingDirectionScreen({ navigation }) {
         return b;
       });
       setCorrGyr((g) => {
-        g.x = alpha * gyr.x + (1 - alpha) * -bias.x;
-        g.y = alpha * gyr.y + (1 - alpha) * -bias.y;
-        g.z = alpha * gyr.z + (1 - alpha) * -bias.z;
+        g.x = compFilter(gyr.x, -bias.x);
+        g.y = compFilter(gyr.y, -bias.y);
+        g.z = compFilter(gyr.z, -bias.z);
         return g;
       });
 

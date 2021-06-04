@@ -39,33 +39,6 @@ export function LCS2GCS(lcs, euler, T = false) {
   return gcs;
 }
 
-export function EulerAngles(acc, mag, gyrAng, prevEuler) {
-  let pitch = Math.atan2(acc.y, acc.z);
-  let roll = Math.atan2(
-    -acc.x,
-    Math.sqrt(Math.pow(acc.y, 2) + Math.pow(acc.z, 2))
-  );
-  let yaw = Math.atan2(
-    mag.z * Math.sin(roll) - mag.y * Math.cos(roll),
-    mag.x * Math.cos(pitch) +
-      mag.y * Math.sin(pitch) * Math.sin(roll) +
-      mag.z * Math.sin(pitch) * Math.cos(roll)
-  );
-
-  let alpha = 0.95;
-  return !prevEuler
-    ? {
-        pitch: pitch,
-        roll: roll,
-        yaw: yaw,
-      }
-    : {
-        pitch: alpha * (prevEuler.pitch + gyrAng.pitch) + (1 - alpha) * pitch,
-        roll: alpha * (prevEuler.roll + gyrAng.roll) + (1 - alpha) * roll,
-        yaw: alpha * (prevEuler.yaw + gyrAng.yaw) + (1 - alpha) * yaw,
-      };
-}
-
 export function round(n) {
   if (!n) {
     return 0;
@@ -77,4 +50,8 @@ export function degree(deg) {
   deg = deg % 360;
   if (deg < 0) deg += 360;
   return deg;
+}
+
+export function compFilter(value1, value2, alpha = 0.95) {
+  return alpha * value1 + (1 - alpha) * value2;
 }

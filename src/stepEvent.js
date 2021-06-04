@@ -1,24 +1,21 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
+import { Accelerometer, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
-import { LCS2GCS, EulerAngles, round } from './utils/sensors_utils';
+import { compFilter, LCS2GCS, round } from './utils/sensors_utils';
 import { styles } from './utils/styles';
 import { RealTimeLineChart } from './lineChart';
-import { usePrevious } from './utils/customHooks';
+import { useEulerAngle } from './utils/customHooks';
 
 export function StepEventScreen({ navigation }) {
   // Listeners
   const [subscription, setSubscription] = React.useState(null);
   const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
   const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyrAng, setGyrAng] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
 
   // Custom Hooks
-  const euler = EulerAngles(acc, mag, gyrAng, prevEuler);
-  const prevEuler = usePrevious(euler);
+  const euler = useEulerAngle(acc, mag);
   const [gzt, setGzt] = React.useState(1);
 
   // States
@@ -31,11 +28,9 @@ export function StepEventScreen({ navigation }) {
   const W = 3;
   const N = 8;
   const dt = 100;
-  const alpha = 0.95;
 
   Accelerometer.setUpdateInterval(dt);
   Magnetometer.setUpdateInterval(dt);
-  Gyroscope.setUpdateInterval(dt);
 
   const _subscribe = () => {
     const sensor = {
@@ -45,9 +40,6 @@ export function StepEventScreen({ navigation }) {
       mag: Magnetometer.addListener((data) => {
         setMag(data);
       }),
-      gyr: Gyroscope.addListener((data) => {
-        setGyr(data);
-      }),
     };
     setSubscription(sensor);
   };
@@ -55,7 +47,6 @@ export function StepEventScreen({ navigation }) {
   const _unsubscribe = () => {
     subscription.acc.remove();
     subscription.mag.remove();
-    subscription.gyr.remove();
     setSubscription(null);
   };
 
@@ -64,23 +55,13 @@ export function StepEventScreen({ navigation }) {
     return () => {
       Accelerometer.removeAllListeners();
       Magnetometer.removeAllListeners();
-      Gyroscope.removeAllListeners();
       _unsubscribe;
     };
   }, [navigation]);
 
   React.useEffect(() => {
-    setGyrAng((angle) => {
-      angle.pitch += gyr.x * (dt / 1000);
-      angle.roll += gyr.y * (dt / 1000);
-      angle.yaw += gyr.z * (dt / 1000);
-      return angle;
-    });
-  }, [gyr]);
-
-  React.useEffect(() => {
     let acc_gcs = LCS2GCS(acc, euler);
-    setGzt((g) => alpha * g + (1 - alpha) * acc_gcs.z);
+    setGzt((g) => compFilter(g, acc_gcs.z));
     let acc_hpf = (acc_gcs.z - gzt) * 9.81;
 
     setWindowList([...windowList, round(acc_hpf)]);
