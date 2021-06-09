@@ -1,13 +1,18 @@
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, Text } from 'react-native';
 import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
 // custom module
 import { styles } from './utils/styles';
-import { compFilter, degree, LCS2GCS, round } from './utils/sensors_utils';
+import { compFilter, degree, round } from './utils/sensors_utils';
 import { RealTimeLineChart } from './lineChart';
-import { usePrevious, useGyrAngle, useEulerAngle } from './utils/customHooks';
+import {
+  usePrevious,
+  useGyrAngle,
+  useEulerAngle,
+  useGCS,
+} from './utils/customHooks';
 
 export function HeadingDirectionScreen({ navigation }) {
   // Listeners
@@ -16,20 +21,23 @@ export function HeadingDirectionScreen({ navigation }) {
   const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
-  // Custom Hooks
-  const gyrAng = useGyrAngle(gyr);
-  const euler = useEulerAngle(acc, mag);
-  const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
-  const prevGravity = usePrevious(gravity);
-  const [headingMag, setHeadingMag] = React.useState(0);
-  const prevHeadingMag = usePrevious(headingMag);
-  const [headingGyr, setHeadingGyr] = React.useState(0);
-  const prevHeadingGyr = usePrevious(headingGyr);
-
   // States
   const [stackAng, setStackAng] = React.useState([]);
   const [bias, setBias] = React.useState({ x: 0, y: 0, z: 0 });
   const [corrGyr, setCorrGyr] = React.useState({ x: 0, y: 0, z: 0 });
+  const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 9.81 });
+  const [headingMag, setHeadingMag] = React.useState(0);
+  const [headingGyr, setHeadingGyr] = React.useState(0);
+
+  // Custom Hooks
+  const gyrAng = useGyrAngle(gyr);
+  const euler = useEulerAngle(acc, mag);
+  const acc_gcs = useGCS(acc, euler);
+  const mag_gcs = useGCS(mag, euler);
+  const gt = useGCS(gravity, euler, true);
+  const prevGravity = usePrevious(gravity);
+  const prevHeadingMag = usePrevious(headingMag);
+  const prevHeadingGyr = usePrevious(headingGyr);
 
   // Constant declarations
   const dt = 100;
@@ -73,7 +81,6 @@ export function HeadingDirectionScreen({ navigation }) {
 
   // Magnetometer-based Heading Direction
   React.useEffect(() => {
-    let mag_gcs = LCS2GCS(mag, euler);
     let h_mag =
       2 *
         Math.atan2(
@@ -86,16 +93,15 @@ export function HeadingDirectionScreen({ navigation }) {
   }, [mag]);
 
   // Gyroscope-based Heading Direction
-  const acc_gcs = LCS2GCS(acc, euler);
   React.useState(() => {
     !prevGravity
       ? setGravity({
           ...gravity,
-          z: compFilter(gravity.z, acc_gcs.z),
+          z: compFilter(gravity.z, acc_gcs.z * 9.81),
         })
       : setGravity({
           ...gravity,
-          z: compFilter(prevGravity.z, acc_gcs.z),
+          z: compFilter(prevGravity.z, acc_gcs.z * 9.81),
         });
   }, [acc]);
 
@@ -111,16 +117,15 @@ export function HeadingDirectionScreen({ navigation }) {
         return b;
       });
       setCorrGyr((g) => {
-        g.x = compFilter(gyr.x, -bias.x);
-        g.y = compFilter(gyr.y, -bias.y);
-        g.z = compFilter(gyr.z, -bias.z);
+        g.x = gyr.x - -bias.x;
+        g.y = gyr.y - -bias.y;
+        g.z = gyr.z - -bias.z;
         return g;
       });
 
-      let gt = LCS2GCS(gravity, euler, true);
       let gyr_gcs =
         (corrGyr.x * gt.x + corrGyr.y * gt.y + corrGyr.z * gt.z) /
-        Math.sqrt(Math.pow(gt.x, 2) + Math.pow(gt.y, 2) + Math.pow(gt.z, 2));
+        Math.sqrt(gt.x * gt.x + gt.y * gt.y + gt.z * gt.z);
       setHeadingGyr((h) => h - gyr_gcs * (dt / 1000));
     }
   }, [gyr]);
@@ -137,8 +142,11 @@ export function HeadingDirectionScreen({ navigation }) {
       <ScrollView style={styles.scroll}>
         <RealTimeLineChart
           title="Heading Direction"
-          data={degree(round((heading * 180) / Math.PI))}
+          data={round((heading * 180) / Math.PI)}
         />
+        <Text style={styles.text}>corrGyr x-axis: {corrGyr.x}</Text>
+        <Text style={styles.text}>corrGyr y-axis: {corrGyr.y}</Text>
+        <Text style={styles.text}>corrGyr z-axis: {corrGyr.z}</Text>
         <View style={styles.container}>
           <View style={styles.buttonContainer}>
             <Button

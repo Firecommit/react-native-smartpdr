@@ -41,3 +41,44 @@ export function useEulerAngle(acc, mag) {
   });
   return ref.current;
 }
+
+export function useGCS(lcs, euler, T = false) {
+  const pitch = euler.pitch,
+    roll = euler.roll,
+    yaw = euler.yaw;
+
+  const R = [
+    [
+      Math.cos(yaw) * Math.cos(roll) -
+        Math.sin(yaw) * Math.sin(pitch) * Math.sin(roll),
+      -Math.sin(yaw) * Math.cos(pitch),
+      Math.cos(yaw) * Math.sin(roll) +
+        Math.sin(yaw) * Math.sin(pitch) * Math.cos(roll),
+    ],
+    [
+      -Math.sin(yaw) * Math.cos(roll) -
+        Math.cos(yaw) * Math.sin(pitch) * Math.sin(roll),
+      -Math.cos(yaw) * Math.cos(pitch),
+      -Math.sin(yaw) * Math.sin(roll) +
+        Math.cos(yaw) * Math.sin(pitch) * Math.cos(roll),
+    ],
+    [
+      -Math.cos(pitch) * Math.sin(roll),
+      Math.sin(pitch),
+      Math.cos(pitch) * Math.cos(roll),
+    ],
+  ];
+
+  // T mean transpose. If T is true, R is transposed matrix. If T is false, R is rotation matrix.
+  return {
+    x: T
+      ? R[0][0] * lcs.x + R[1][0] * lcs.y + R[2][0] * lcs.z
+      : R[0][0] * lcs.x + R[0][1] * lcs.y + R[0][2] * lcs.z,
+    y: T
+      ? R[0][1] * lcs.x + R[1][1] * lcs.y + R[2][1] * lcs.z
+      : R[1][0] * lcs.x + R[1][1] * lcs.y + R[1][2] * lcs.z,
+    z: T
+      ? R[0][2] * lcs.x + R[1][2] * lcs.y + R[2][2] * lcs.z
+      : R[2][0] * lcs.x + R[2][1] * lcs.y + R[2][2] * lcs.z,
+  };
+}

@@ -3,10 +3,10 @@ import { View, Text } from 'react-native';
 import { Accelerometer, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
-import { compFilter, LCS2GCS, round } from './utils/sensors_utils';
+import { compFilter, round } from './utils/sensors_utils';
 import { styles } from './utils/styles';
 import { RealTimeLineChart } from './lineChart';
-import { useEulerAngle } from './utils/customHooks';
+import { useEulerAngle, useGCS } from './utils/customHooks';
 
 export function StepEventScreen({ navigation }) {
   // Listeners
@@ -17,6 +17,7 @@ export function StepEventScreen({ navigation }) {
   // Custom Hooks
   const euler = useEulerAngle(acc, mag);
   const [gzt, setGzt] = React.useState(1);
+  const acc_gcs = useGCS(acc, euler);
 
   // States
   const [accStep, setAccStep] = React.useState(0);
@@ -60,7 +61,6 @@ export function StepEventScreen({ navigation }) {
   }, [navigation]);
 
   React.useEffect(() => {
-    let acc_gcs = LCS2GCS(acc, euler);
     setGzt((g) => compFilter(g, acc_gcs.z));
     let acc_hpf = (acc_gcs.z - gzt) * 9.81;
 
