@@ -6,8 +6,8 @@ import { Button } from 'react-native-paper';
 // custom modules
 import { styles } from './utils/styles';
 import { RealTimeLineChart } from './lineChart';
-import { useAccStep, useStepLength } from './utils/customHooks';
-import { round, range } from './utils/sensors_utils';
+import { useAccStep, useHeading, useStepLength } from './utils/customHooks';
+import { round } from './utils/sensors_utils';
 
 export function StepLengthScreen({ navigation }) {
   // Listeners
@@ -18,6 +18,7 @@ export function StepLengthScreen({ navigation }) {
 
   // Custom Hooks
   const [accStep, stepFlag] = useAccStep(acc, mag, gyr);
+  const heading = useHeading(acc, mag, gyr);
   const [stepLength, headingStep] = useStepLength(acc, mag, gyr);
 
   // States
@@ -73,6 +74,10 @@ export function StepLengthScreen({ navigation }) {
       <ScrollView style={styles.scroll}>
         <View style={styles.container}>
           <RealTimeLineChart title="step acceleration" data={accStep} />
+          <RealTimeLineChart
+            title="heading direction"
+            data={round((heading * 180) / Math.PI)}
+          />
         </View>
         <Text style={styles.title}>step count</Text>
         <Text style={styles.text}>{stepCount}</Text>
