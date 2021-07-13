@@ -3,9 +3,9 @@ import { ScrollView, View, Text } from 'react-native';
 import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
-// custom module
+// custom modules
 import { styles } from './utils/styles';
-import { degree, round } from './utils/sensors_utils';
+import { round } from './utils/sensors_utils';
 import { RealTimeLineChart } from './lineChart';
 import { useHeading } from './utils/customHooks';
 
@@ -17,10 +17,11 @@ export function HeadingDirectionScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
-  const [headingMag, headingGyr, heading] = useHeading(acc, mag, gyr);
+  const heading = useHeading(acc, mag, gyr);
 
   // Constant declarations
   const dt = 100;
+  const data = round((heading * 180) / Math.PI);
 
   Accelerometer.setUpdateInterval(dt);
   Magnetometer.setUpdateInterval(dt);
@@ -61,10 +62,11 @@ export function HeadingDirectionScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scroll}>
-        <RealTimeLineChart
-          title="Heading direction"
-          data={degree(round((heading * 180) / Math.PI))}
-        />
+        <View style={styles.container}>
+          <RealTimeLineChart title="Heading" data={data} />
+        </View>
+        <Text style={styles.title}>Heading Direction</Text>
+        <Text style={styles.text}>{data}</Text>
         <View style={styles.container}>
           <View style={styles.buttonContainer}>
             <Button

@@ -3,10 +3,11 @@ import { View, Text } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
+// custom modules
 import { round } from './utils/sensors_utils';
 import { styles } from './utils/styles';
 import { RealTimeLineChart } from './lineChart';
-import { useStep } from './utils/customHooks';
+import { useAccStep } from './utils/customHooks';
 
 export function StepEventScreen({ navigation }) {
   // Listeners
@@ -16,7 +17,10 @@ export function StepEventScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
-  const [accStep, stepCount] = useStep(acc, mag, gyr);
+  const [accStep, stepFlag] = useAccStep(acc, mag, gyr);
+
+  // States
+  const [stepCount, setStepCount] = React.useState(0);
 
   // Constant declarations
   const dt = 100;
@@ -56,6 +60,12 @@ export function StepEventScreen({ navigation }) {
       _unsubscribe;
     };
   }, [navigation]);
+
+  React.useEffect(() => {
+    if (stepFlag) {
+      setStepCount((c) => c + 1);
+    }
+  }, [accStep]);
 
   return (
     <View style={styles.container}>
