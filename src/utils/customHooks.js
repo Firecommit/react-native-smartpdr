@@ -113,7 +113,7 @@ export function useAccStep(acc, mag, gyr) {
   const [stepFlag, setStepFlag] = React.useState(false);
 
   // Constant declarations
-  const [W, N] = [3, 8];
+  const [W, N] = [3, 6];
 
   // Private function: a peak step counting algorithm.
   const _algorithm = () => {
