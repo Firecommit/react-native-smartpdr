@@ -17,8 +17,7 @@ export function StepLengthScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
-  const [accStep, stepFlag] = useAccStep(acc, mag, gyr);
-  const heading = useHeading(acc, mag, gyr);
+  const [accStep, accEvent] = useAccStep(acc, mag, gyr);
   const [stepLength, headingStep] = useStepLength(acc, mag, gyr);
 
   // States
@@ -64,21 +63,14 @@ export function StepLengthScreen({ navigation }) {
   }, [navigation]);
 
   React.useEffect(() => {
-    if (stepFlag) {
+    if (accEvent) {
       setStepCount((c) => c + 1);
     }
   }, [accStep]);
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scroll}>
-        <View style={styles.container}>
-          <RealTimeLineChart title="step acceleration" data={accStep} />
-          <RealTimeLineChart
-            title="heading direction"
-            data={round((heading * 180) / Math.PI)}
-          />
-        </View>
+      <View style={styles.container}>
         <Text style={styles.title}>step count</Text>
         <Text style={styles.text}>{stepCount}</Text>
         <Text style={styles.title}>
@@ -87,17 +79,15 @@ export function StepLengthScreen({ navigation }) {
         <Text style={styles.text}>{round((headingStep * 180) / Math.PI)}</Text>
         <Text style={styles.title}>estimated step length</Text>
         <Text style={styles.text}>{stepLength}</Text>
-        <View style={styles.container}>
-          <Button
-            style={styles.button}
-            dark={true}
-            mode={subscription ? 'contained' : 'outlined'}
-            onPress={subscription ? _unsubscribe : _subscribe}
-          >
-            {subscription ? 'On' : 'Off'}
-          </Button>
-        </View>
-      </ScrollView>
+        <Button
+          style={styles.button}
+          dark={true}
+          mode={subscription ? 'contained' : 'outlined'}
+          onPress={subscription ? _unsubscribe : _subscribe}
+        >
+          {subscription ? 'On' : 'Off'}
+        </Button>
+      </View>
     </View>
   );
 }

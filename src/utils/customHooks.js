@@ -109,8 +109,8 @@ export function useAccStep(acc, mag, gyr) {
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
   const [movingWindow, setMovingWindow] = React.useState([]);
   const [accStep, setAccStep] = React.useState(0);
+  const [accEvent, setAccEvent] = React.useState(0);
   const [accList, setAccList] = React.useState([]);
-  const [stepFlag, setStepFlag] = React.useState(false);
 
   // Constant declarations
   const [W, N] = [3, 6];
@@ -124,7 +124,7 @@ export function useAccStep(acc, mag, gyr) {
 
     // the peak point of time exceeding the threshold acc_peak
     if (accList[t] > acc_peak_th) {
-      for (let i = -N / 2; i <= N / 2; i++) {
+      for (let i = -N / 2; i < N / 2; i++) {
         if (i === 0) continue;
         if (accList[t] > accList[t + i]) {
           cond.peak = true;
@@ -136,9 +136,9 @@ export function useAccStep(acc, mag, gyr) {
     // the set of time point that the largest difference
     // between the current peak and both of previous and next valley
     let diff = { prev: [], next: [] };
-    for (let i = 1; i <= N / 2; i++) {
-      diff.prev.push(Math.abs(accList[t] - accList[t - i]));
-      diff.next.push(Math.abs(accList[t] - accList[t + i]));
+    for (let i = 1; i < N / 2; i++) {
+      diff.prev.push(accList[t] - accList[t - i]);
+      diff.next.push(accList[t] - accList[t + i]);
     }
     if (
       Math.max(...diff.prev) > acc_pp_th &&
@@ -153,12 +153,12 @@ export function useAccStep(acc, mag, gyr) {
     for (let i = t - N / 2; i <= t - 1; i++) {
       sum.pos = accList[i + 1] - accList[i];
     }
-    for (let i = t + 1; i <= t + N / 2; i++) {
+    for (let i = t + 1; i < t + N / 2; i++) {
       sum.neg = accList[i] - accList[i - 1];
     }
     if ((2 / N) * sum.pos > 0 && (2 / N) * sum.neg < 0) cond.slope = true;
 
-    return cond.peak && cond.pp && cond.slope ? true : false;
+    return cond.peak && cond.pp && cond.slope ? accList[t] : 0;
   };
 
   React.useEffect(() => {
@@ -172,8 +172,8 @@ export function useAccStep(acc, mag, gyr) {
         let acc_step = movingWindow.reduce((a, b) => a + b) / W;
         setAccStep(acc_step);
         setAccList((al) => [...al, acc_step]);
-        if (accList.length >= N + 1) {
-          setStepFlag(_algorithm);
+        if (accList.length === N) {
+          setAccEvent(_algorithm);
           setAccList((al) => al.slice(1));
         }
         setMovingWindow((mv) => mv.slice((W - 1) / 2));
@@ -181,7 +181,7 @@ export function useAccStep(acc, mag, gyr) {
     }
   }, [acc]);
 
-  return [accStep, stepFlag];
+  return [accStep, accEvent];
 }
 
 export function useHeading(acc, mag, gyr) {
@@ -305,7 +305,7 @@ export function useHeading(acc, mag, gyr) {
 
 export function useStepLength(acc, mag, gyr) {
   // Custom Hooks
-  const [accStep, stepFlag] = useAccStep(acc, mag, gyr);
+  const [accStep, accEvent] = useAccStep(acc, mag, gyr);
   const heading = useHeading(acc, mag, gyr);
 
   // States
@@ -322,8 +322,8 @@ export function useStepLength(acc, mag, gyr) {
   React.useEffect(() => {
     setAccList((al) => [...al, accStep]);
     setHeadingList((hl) => [...hl, heading]);
-    if (stepFlag) {
-      let peakIdx = accList.length;
+    if (accEvent) {
+      let peakIdx = accList.indexOf(accEvent);
       setAccIdx(peakIdx);
       if (valleyList.length) {
         let valleyIdx = argmin(valleyList, accList);

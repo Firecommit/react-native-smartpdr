@@ -17,7 +17,7 @@ export function StepEventScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
-  const [accStep, stepFlag] = useAccStep(acc, mag, gyr);
+  const [accStep, accEvent] = useAccStep(acc, mag, gyr);
 
   // States
   const [stepCount, setStepCount] = React.useState(0);
@@ -62,7 +62,7 @@ export function StepEventScreen({ navigation }) {
   }, [navigation]);
 
   React.useEffect(() => {
-    if (stepFlag) {
+    if (accEvent) {
       setStepCount((c) => c + 1);
     }
   }, [accStep]);
@@ -70,6 +70,8 @@ export function StepEventScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <RealTimeLineChart title="step acceleration" data={round(accStep)} />
+      <Text style={styles.title}>Step Acceleration</Text>
+      <Text style={styles.text}>{accEvent}</Text>
       <Text style={styles.title}>Step Count</Text>
       <Text style={styles.text}>{stepCount}</Text>
       <View style={styles.buttonContainer}>
