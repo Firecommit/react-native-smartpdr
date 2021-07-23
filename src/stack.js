@@ -5,6 +5,7 @@ import { Appbar, useTheme } from 'react-native-paper';
 import { Image } from 'react-native';
 
 import { FeedScreen } from './feed';
+import { AttitudeScreen } from './attitude';
 import { StepEventScreen } from './stepEvent';
 import { HeadingDirectionScreen } from './headingDirection';
 import { StepLengthScreen } from './stepLength';
@@ -68,6 +69,10 @@ export function StackNavigator() {
 
 const StackScreen = {
   Feed: { component: FeedScreen, options: { headerTitle: 'Feed' } },
+  Attitude: {
+    component: AttitudeScreen,
+    options: { headerTitle: 'Attitude Estimation' },
+  },
   StepEvent: {
     component: StepEventScreen,
     options: { headerTitle: 'Step Event Detection' },

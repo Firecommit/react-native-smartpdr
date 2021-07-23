@@ -37,21 +37,22 @@ export function argmin(list1, list2 = list1) {
 }
 
 export function toGCS(lcs, euler, T = false) {
-  const R_roll = [
+  let { pitch, roll, yaw } = euler;
+  const Rx = [
     [1, 0, 0],
-    [0, Math.cos(euler.roll), -Math.sin(euler.roll)],
-    [0, Math.sin(euler.roll), Math.cos(euler.roll)],
+    [0, -Math.cos(pitch), Math.sin(pitch)],
+    [0, Math.sin(pitch), Math.cos(pitch)],
   ];
 
-  const R_pitch = [
-    [Math.cos(euler.pitch), 0, Math.sin(euler.pitch)],
+  const Ry = [
+    [Math.cos(roll), 0, Math.sin(roll)],
     [0, 1, 0],
-    [-Math.sin(euler.pitch), 0, Math.cos(euler.pitch)],
+    [-Math.sin(roll), 0, Math.cos(roll)],
   ];
 
-  const R_yaw = [
-    [Math.cos(euler.yaw), -Math.sin(euler.yaw), 0],
-    [Math.sin(euler.yaw), Math.cos(euler.yaw), 0],
+  const Rz = [
+    [Math.cos(yaw), Math.sin(yaw), 0],
+    [-Math.sin(yaw), Math.cos(yaw), 0],
     [0, 0, 1],
   ];
 
@@ -71,7 +72,7 @@ export function toGCS(lcs, euler, T = false) {
     return ret;
   };
 
-  const R = _matrix_times(_matrix_times(R_yaw, R_pitch), R_roll);
+  const R = _matrix_times(_matrix_times(Rz, Rx), Ry);
 
   // T mean transpose. If T is true, R is transposed matrix.
   // If T is false, R is rotation matrix.

@@ -4,6 +4,7 @@ import { List, Surface } from 'react-native-paper';
 
 export function FeedScreen({ navigation }) {
   const ListItem = {
+    Attitude: { title: 'Attitude Estimation', icon: '' },
     StepEvent: { title: 'Step Event Detection', icon: 'walk' },
     HeadingDirection: {
       title: 'Heading Direction Estimation',

@@ -1,20 +1,12 @@
 import React from 'react';
 import { argmin, LPFilter, compFilter, toGCS, range } from './sensors_utils';
 
-export function usePrevious(value) {
-  const ref = React.useRef();
-  React.useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref.current;
-}
-
 export function useGyrAngle(gyr) {
-  const ref = React.useRef({ roll: 0, pitch: 0, yaw: 0 });
+  const ref = React.useRef({ pitch: 0, roll: 0, yaw: 0 });
   const dt = 100;
   React.useEffect(() => {
-    ref.current.roll += gyr.y * (dt / 1000);
     ref.current.pitch += gyr.x * (dt / 1000);
+    ref.current.roll += gyr.y * (dt / 1000);
     ref.current.yaw += gyr.z * (dt / 1000);
   }, [gyr]);
   return ref.current;
@@ -22,13 +14,13 @@ export function useGyrAngle(gyr) {
 
 export function useEulerAngle(acc, mag, gyr) {
   // States
-  const [initAng, setInitAng] = React.useState({ roll: 0, pitch: 0, yaw: 0 });
+  const [initAng, setInitAng] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
   const [calibration, setCalibration] = React.useState({
-    roll: 0,
     pitch: 0,
+    roll: 0,
     yaw: 0,
   });
-  const [angle, setAngle] = React.useState({ roll: 0, pitch: 0, yaw: 0 });
+  const [angle, setAngle] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
 
   // Constant declarations
   const dt = 100;
@@ -36,31 +28,29 @@ export function useEulerAngle(acc, mag, gyr) {
 
   React.useEffect(() => {
     if (acc.x + acc.y + acc.z) {
-      let pitch = Math.atan(
-        -acc.x / Math.sqrt(Math.pow(acc.y, 2) + Math.pow(acc.z, 2))
+      let pitch = Math.atan2(
+        -acc.y,
+        Math.sqrt(Math.pow(acc.x, 2) + Math.pow(acc.z, 2))
       );
-      let roll = Math.atan2(acc.y, acc.z);
+      let roll = Math.atan2(-acc.x, acc.z);
+      roll > 0 ? (roll -= Math.PI) : (roll += Math.PI);
       if (!initAng.roll) setInitAng((ang) => ({ ...ang, roll: roll }));
       if (!initAng.pitch) setInitAng((ang) => ({ ...ang, pitch: pitch }));
-      setCalibration((c) => ({ ...c, roll: roll, pitch: pitch }));
+      setCalibration((c) => ({ ...c, pitch: pitch, roll: roll }));
     }
   }, [acc]);
 
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z) {
       let mx =
-        mag.x +
-        Math.sqrt(
-          Math.pow(mag.x, 2) + Math.pow(mag.y, 2) + Math.pow(mag.z, 2)
-        ) *
-          Math.sin(I) *
-          Math.sin(calibration.pitch);
-      let my =
-        Math.cos(calibration.pitch) *
-        (mag.z * Math.sin(calibration.roll) -
-          mag.y * Math.cos(calibration.roll));
+          mag.x * Math.cos(calibration.roll) +
+          mag.z * Math.sin(calibration.roll),
+        my =
+          mag.x * (-Math.sin(calibration.pitch) * Math.sin(calibration.roll)) +
+          mag.y * -Math.cos(calibration.pitch) +
+          mag.z * Math.sin(calibration.pitch) * Math.cos(calibration.roll);
       let yaw = Math.atan2(my, mx);
-      yaw = range(yaw, 'PI');
+      yaw > 0 ? (yaw -= Math.PI) : (yaw += Math.PI);
       if (!initAng.yaw) setInitAng((ang) => ({ ...ang, yaw: yaw }));
       setCalibration((i) => ({ ...i, yaw: yaw }));
     }
@@ -68,24 +58,23 @@ export function useEulerAngle(acc, mag, gyr) {
 
   React.useEffect(() => {
     if (gyr.x + gyr.y + gyr.z) {
-      let yaw =
-        gyr.y * (Math.sin(calibration.roll) / Math.cos(calibration.pitch)) +
-        gyr.z * (Math.cos(calibration.roll) / Math.cos(calibration.pitch));
       let pitch =
-        gyr.y * Math.cos(calibration.roll) +
-        gyr.z * -Math.sin(calibration.roll);
+        gyr.x * Math.cos(calibration.roll) + gyr.z * Math.sin(calibration.roll);
       let roll =
-        gyr.x +
-        gyr.y * Math.sin(calibration.roll) * Math.tan(calibration.pitch) +
-        gyr.z * Math.cos(calibration.roll) * Math.tan(calibration.pitch);
+        gyr.x * Math.sin(calibration.roll) * Math.tan(calibration.pitch) +
+        gyr.y +
+        gyr.z * -Math.cos(calibration.roll) * Math.tan(calibration.pitch);
+      let yaw =
+        gyr.x * (-Math.sin(calibration.roll) / Math.cos(calibration.pitch)) +
+        gyr.z * (Math.cos(calibration.roll) / Math.cos(calibration.pitch));
 
       if (angle.roll && angle.pitch && angle.yaw) {
         setAngle((ang) => ({
+          pitch: compFilter(ang.pitch + pitch * (dt / 1000), calibration.pitch),
           roll: compFilter(
             range(ang.roll + roll * (dt / 1000), 'PI'),
             calibration.roll
           ),
-          pitch: compFilter(ang.pitch + pitch * (dt / 1000), calibration.pitch),
           yaw: compFilter(
             range(ang.yaw + yaw * (dt / 1000), 'PI'),
             calibration.yaw
@@ -242,7 +231,7 @@ export function useHeading(acc, mag, gyr) {
   // Magnetometer-based heading direction
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z && euler.roll && euler.pitch && euler.yaw) {
-      let mag_gcs = toGCS(mag, { ...euler, yaw: 0 });
+      let mag_gcs = toGCS(mag, euler);
       let h_mag =
         2 *
           Math.atan(
@@ -293,14 +282,12 @@ export function useHeading(acc, mag, gyr) {
         (corrGyr.x * gt.x + corrGyr.y * gt.y + corrGyr.z * gt.z) /
         Math.sqrt(Math.pow(gt.x, 2) + Math.pow(gt.y, 2) + Math.pow(gt.z, 2));
       if (headingGyr) {
-        setHeadingGyr((h) =>
-          compFilter(range(h + gyr_gcs * (dt / 1000), '2PI'), headingMag)
-        );
+        setHeadingGyr((h) => range(h + gyr_gcs * (dt / 1000), '2PI'));
       }
     }
   }, [gyr]);
 
-  return heading;
+  return headingMag;
 }
 
 export function useStepLength(acc, mag, gyr) {
