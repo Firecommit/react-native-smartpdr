@@ -24,16 +24,14 @@ export function useEulerAngle(acc, mag, gyr) {
 
   // Constant declarations
   const dt = 100;
-  const I = (48.94 * Math.PI) / 180;
 
   React.useEffect(() => {
     if (acc.x + acc.y + acc.z) {
       let pitch = Math.atan2(
         -acc.y,
-        Math.sqrt(Math.pow(acc.x, 2) + Math.pow(acc.z, 2))
+        Math.sqrt(Math.pow(-acc.x, 2) + Math.pow(-acc.z, 2))
       );
-      let roll = Math.atan2(-acc.x, acc.z);
-      roll > 0 ? (roll -= Math.PI) : (roll += Math.PI);
+      let roll = Math.atan2(acc.x, -acc.z);
       if (!initAng.roll) setInitAng((ang) => ({ ...ang, roll: roll }));
       if (!initAng.pitch) setInitAng((ang) => ({ ...ang, pitch: pitch }));
       setCalibration((c) => ({ ...c, pitch: pitch, roll: roll }));
@@ -43,14 +41,13 @@ export function useEulerAngle(acc, mag, gyr) {
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z) {
       let mx =
-          mag.x * Math.cos(calibration.roll) +
-          mag.z * Math.sin(calibration.roll),
+          -mag.x * Math.cos(calibration.roll) +
+          -mag.z * Math.sin(calibration.roll),
         my =
-          mag.x * (-Math.sin(calibration.pitch) * Math.sin(calibration.roll)) +
-          mag.y * -Math.cos(calibration.pitch) +
-          mag.z * Math.sin(calibration.pitch) * Math.cos(calibration.roll);
+          -mag.x * (-Math.sin(calibration.pitch) * Math.sin(calibration.roll)) +
+          -mag.y * -Math.cos(calibration.pitch) +
+          -mag.z * Math.sin(calibration.pitch) * Math.cos(calibration.roll);
       let yaw = Math.atan2(my, mx);
-      yaw > 0 ? (yaw -= Math.PI) : (yaw += Math.PI);
       if (!initAng.yaw) setInitAng((ang) => ({ ...ang, yaw: yaw }));
       setCalibration((i) => ({ ...i, yaw: yaw }));
     }
@@ -152,7 +149,7 @@ export function useAccStep(acc, mag, gyr) {
 
   React.useEffect(() => {
     if (acc.x + acc.y + acc.z && euler.pitch && euler.roll && euler.yaw) {
-      let acc_gcs = toGCS(acc, euler);
+      let acc_gcs = toGCS({ x: -acc.x, y: -acc.y, z: -acc.z }, euler);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z) }));
       let acc_hpf = (acc_gcs.z - gravity.z) * 9.81;
 
@@ -209,7 +206,10 @@ export function useHeading(acc, mag, gyr) {
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 9.81 });
   const [gyrAngTI, setGyrAngTI] = React.useState([]);
   const [bias, setBias] = React.useState({ x: 0, y: 0, z: 0 });
-  const [headingMag, setHeadingMag] = React.useState(0);
+  const [headingMag, setHeadingMag] = React.useState({
+    prev: null,
+    current: 0,
+  });
   const [headingGyr, setHeadingGyr] = React.useState(0);
   const [heading, setHeading] = React.useState(0);
 
@@ -223,30 +223,27 @@ export function useHeading(acc, mag, gyr) {
 
   React.useEffect(() => {
     if (acc.x + acc.y + acc.z && euler.roll && euler.pitch && euler.yaw) {
-      let acc_gcs = toGCS(acc, euler);
+      let acc_gcs = toGCS({ x: -acc.x, y: -acc.y, z: -acc.z }, euler);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z * 9.81) }));
     }
   }, [acc]);
 
+  const atan2 = (y, x) => {
+    return 2 * Math.atan(y / (Math.sqrt(x * x + y * y) + x));
+  };
+
   // Magnetometer-based heading direction
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z && euler.roll && euler.pitch && euler.yaw) {
-      let mag_gcs = toGCS(mag, euler);
-      let h_mag =
-        2 *
-          Math.atan(
-            -mag_gcs.y /
-              (Math.sqrt(Math.pow(mag_gcs.x, 2) + Math.pow(-mag_gcs.y, 2)) +
-                mag_gcs.x)
-          ) -
-        h_decline;
-      h_mag = range(h_mag, '2PI');
-      h_mag - Math.PI / 2 >= 0
-        ? (h_mag -= Math.PI / 2)
-        : (h_mag += (Math.PI * 3) / 2);
+      let mag_gcs = toGCS(
+        { x: -mag.x, y: -mag.y, z: -mag.z },
+        { ...euler, yaw: 0 }
+      );
+      let h_mag = atan2(-mag_gcs.y, mag_gcs.x) - h_decline;
+      h_mag = range(h_mag + Math.PI / 2, '2PI');
 
       // Calculated Gyroscope bias
-      if (Math.abs(h_mag - headingMag) > (0.7 * Math.PI) / 180) {
+      if (Math.abs(h_mag - headingMag.current) > (0.7 * Math.PI) / 180) {
         setGyrAngTI([]);
       } else {
         setGyrAngTI((ti) => [...ti, JSON.stringify(gyrAng)]);
@@ -256,16 +253,18 @@ export function useHeading(acc, mag, gyr) {
         let start = JSON.parse(gyrAngTI[0]),
           end = JSON.parse(gyrAngTI.slice(-1)[0]);
         setBias({
-          x: (start.pitch - end.pitch) / (num_TI * (dt / 1000)),
-          y: (start.roll - end.roll) / (num_TI * (dt / 1000)),
-          z: (start.yaw - end.yaw) / (num_TI * (dt / 1000)),
+          x: (end.pitch - start.pitch) / (num_TI * (dt / 1000)),
+          y: (end.roll - start.roll) / (num_TI * (dt / 1000)),
+          z: (end.yaw - start.yaw) / (num_TI * (dt / 1000)),
         });
       }
 
-      // Updating heading state
-      setHeading((h_prev) => _algorithm(h_mag, headingGyr, headingMag, h_prev));
-      setHeadingMag(h_mag);
-      if (!headingMag) setHeadingGyr(h_mag);
+      setHeadingMag((h) => ({ ...h, prev: h.current, current: h_mag }));
+      if (
+        !headingMag.current ||
+        Math.abs(h_mag - headingGyr) > (10 * Math.PI) / 180
+      )
+        setHeadingGyr(h_mag);
     }
   }, [mag]);
 
@@ -274,20 +273,27 @@ export function useHeading(acc, mag, gyr) {
     if (gyr.x + gyr.y + gyr.z && euler.roll && euler.pitch && euler.yaw) {
       let gt = toGCS(gravity, euler, true);
       let corrGyr = {
-        x: gyr.x - -bias.x,
-        y: gyr.y - -bias.y,
-        z: gyr.z - -bias.z,
+        x: gyr.x - bias.x,
+        y: gyr.y - bias.y,
+        z: gyr.z - bias.z,
       };
       let gyr_gcs =
         (corrGyr.x * gt.x + corrGyr.y * gt.y + corrGyr.z * gt.z) /
         Math.sqrt(Math.pow(gt.x, 2) + Math.pow(gt.y, 2) + Math.pow(gt.z, 2));
       if (headingGyr) {
-        setHeadingGyr((h) => range(h + gyr_gcs * (dt / 1000), '2PI'));
+        setHeadingGyr((h) => range(h - gyr_gcs * (dt / 1000), '2PI'));
       }
     }
   }, [gyr]);
 
-  return headingMag;
+  // Updating heading state
+  React.useEffect(() => {
+    setHeading((h_prev) =>
+      _algorithm(headingMag.current, headingGyr, headingMag.prev, h_prev)
+    );
+  }, [headingMag, headingGyr]);
+
+  return heading;
 }
 
 export function useStepLength(acc, mag, gyr) {
