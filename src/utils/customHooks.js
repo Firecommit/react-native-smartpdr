@@ -1,5 +1,12 @@
 import React from 'react';
-import { argmin, LPFilter, compFilter, toGCS, range } from './sensors_utils';
+import {
+  argmin,
+  LPFilter,
+  compFilter,
+  toGCS,
+  range,
+  object_sign_inversion,
+} from './sensors_utils';
 
 export function useGyrAngle(gyr) {
   const ref = React.useRef({ pitch: 0, roll: 0, yaw: 0 });
@@ -12,84 +19,80 @@ export function useGyrAngle(gyr) {
   return ref.current;
 }
 
-export function useEulerAngle(acc, mag, gyr) {
+export function useAttitude(acc, mag, gyr) {
+  // Constractor
+  const initState = { pitch: 0, roll: 0, yaw: 0 };
+  const acc_inv = object_sign_inversion(acc);
+  const mag_inv = object_sign_inversion(mag);
+
   // States
-  const [initAng, setInitAng] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
-  const [calibration, setCalibration] = React.useState({
-    pitch: 0,
-    roll: 0,
-    yaw: 0,
-  });
-  const [angle, setAngle] = React.useState({ pitch: 0, roll: 0, yaw: 0 });
+  const [init, setInit] = React.useState(initState);
+  const [euler, setEuler] = React.useState(initState);
+  const [attitude, setAttitude] = React.useState(initState);
 
   // Constant declarations
-  const dt = 100;
+  const dt = 100; // [ms]
 
   React.useEffect(() => {
     if (acc.x + acc.y + acc.z) {
       let pitch = Math.atan2(
-        -acc.y,
-        Math.sqrt(Math.pow(-acc.x, 2) + Math.pow(-acc.z, 2))
+        acc_inv.y,
+        Math.sqrt(Math.pow(acc_inv.x, 2) + Math.pow(acc_inv.z, 2))
       );
-      let roll = Math.atan2(acc.x, -acc.z);
-      if (!initAng.roll) setInitAng((ang) => ({ ...ang, roll: roll }));
-      if (!initAng.pitch) setInitAng((ang) => ({ ...ang, pitch: pitch }));
-      setCalibration((c) => ({ ...c, pitch: pitch, roll: roll }));
+      let roll = Math.atan2(-acc_inv.x, acc_inv.z);
+      if (!init.roll) setInit((i) => ({ ...i, roll: roll }));
+      if (!init.pitch) setInit((i) => ({ ...i, pitch: pitch }));
+      setEuler((e) => ({ ...e, pitch: pitch, roll: roll }));
     }
   }, [acc]);
 
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z) {
       let mx =
-          -mag.x * Math.cos(calibration.roll) +
-          -mag.z * Math.sin(calibration.roll),
+          mag_inv.x * Math.cos(euler.roll) + mag_inv.z * Math.sin(euler.roll),
         my =
-          -mag.x * (-Math.sin(calibration.pitch) * Math.sin(calibration.roll)) +
-          -mag.y * -Math.cos(calibration.pitch) +
-          -mag.z * Math.sin(calibration.pitch) * Math.cos(calibration.roll);
+          mag_inv.x * (-Math.sin(euler.pitch) * Math.sin(euler.roll)) +
+          mag_inv.y * -Math.cos(euler.pitch) +
+          mag_inv.z * Math.sin(euler.pitch) * Math.cos(euler.roll);
       let yaw = Math.atan2(my, mx);
-      if (!initAng.yaw) setInitAng((ang) => ({ ...ang, yaw: yaw }));
-      setCalibration((i) => ({ ...i, yaw: yaw }));
+      if (!init.yaw) setInit((i) => ({ ...i, yaw: yaw }));
+      setEuler((e) => ({ ...e, yaw: yaw }));
     }
   }, [mag]);
 
   React.useEffect(() => {
     if (gyr.x + gyr.y + gyr.z) {
-      let pitch =
-        gyr.x * Math.cos(calibration.roll) + gyr.z * Math.sin(calibration.roll);
+      let pitch = gyr.x * Math.cos(euler.roll) + gyr.z * Math.sin(euler.roll);
       let roll =
-        gyr.x * Math.sin(calibration.roll) * Math.tan(calibration.pitch) +
+        gyr.x * Math.sin(euler.roll) * Math.tan(euler.pitch) +
         gyr.y +
-        gyr.z * -Math.cos(calibration.roll) * Math.tan(calibration.pitch);
+        gyr.z * -Math.cos(euler.roll) * Math.tan(euler.pitch);
       let yaw =
-        gyr.x * (-Math.sin(calibration.roll) / Math.cos(calibration.pitch)) +
-        gyr.z * (Math.cos(calibration.roll) / Math.cos(calibration.pitch));
+        gyr.x * (-Math.sin(euler.roll) / Math.cos(euler.pitch)) +
+        gyr.z * (Math.cos(euler.roll) / Math.cos(euler.pitch));
 
-      if (angle.roll && angle.pitch && angle.yaw) {
-        setAngle((ang) => ({
-          pitch: compFilter(ang.pitch + pitch * (dt / 1000), calibration.pitch),
+      if (attitude.roll && attitude.pitch && attitude.yaw) {
+        setAttitude((att) => ({
+          pitch: compFilter(att.pitch + pitch * (dt / 1000), euler.pitch),
           roll: compFilter(
-            range(ang.roll + roll * (dt / 1000), 'PI'),
-            calibration.roll
+            range(att.roll + roll * (dt / 1000), 'PI'),
+            euler.roll
           ),
-          yaw: compFilter(
-            range(ang.yaw + yaw * (dt / 1000), 'PI'),
-            calibration.yaw
-          ),
+          yaw: compFilter(range(att.yaw + yaw * (dt / 1000), 'PI'), euler.yaw),
         }));
       } else {
-        if (initAng.roll && initAng.pitch && initAng.yaw) {
-          setAngle(initAng);
+        if (init.roll && init.pitch && init.yaw) {
+          setAttitude(init);
         }
       }
     }
   }, [gyr]);
-  return angle;
+  return attitude;
 }
 
 export function useAccStep(acc, mag, gyr) {
-  // Custom Hooks
-  const euler = useEulerAngle(acc, mag, gyr);
+  // Constractor
+  const acc_inv = object_sign_inversion(acc);
 
   // States
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
@@ -97,6 +100,9 @@ export function useAccStep(acc, mag, gyr) {
   const [accStep, setAccStep] = React.useState(0);
   const [accEvent, setAccEvent] = React.useState(0);
   const [accList, setAccList] = React.useState([]);
+
+  // Custom Hooks
+  const attitude = useAttitude(acc, mag, gyr);
 
   // Constant declarations
   const [W, N] = [3, 6];
@@ -148,8 +154,8 @@ export function useAccStep(acc, mag, gyr) {
   };
 
   React.useEffect(() => {
-    if (acc.x + acc.y + acc.z && euler.pitch && euler.roll && euler.yaw) {
-      let acc_gcs = toGCS({ x: -acc.x, y: -acc.y, z: -acc.z }, euler);
+    if (acc.x + acc.y + acc.z) {
+      let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z) }));
       let acc_hpf = (acc_gcs.z - gravity.z) * 9.81;
 
@@ -171,36 +177,9 @@ export function useAccStep(acc, mag, gyr) {
 }
 
 export function useHeading(acc, mag, gyr) {
-  // Private function: the reasonable heading direction of a user finding algorithm.
-  const _algorithm = (h_mag, h_gyr, h_mag_prev, h_t_prev) => {
-    let weight = { prev: 2, mag: 1, gyr: 2, pmg: 1 / 5, mg: 1 / 3, pg: 1 / 4 };
-    let threshold = {
-      h_cor_t: (5 * Math.PI) / 180,
-      h_mag_t: (2 * Math.PI) / 180,
-    };
-    let diff = {
-      h_cor_diff: Math.abs(h_mag - h_gyr),
-      h_mag_diff: Math.abs(h_mag - h_mag_prev),
-    };
-    let h_t = 0;
-
-    if (diff.h_cor_diff <= threshold.h_cor_t) {
-      if (diff.h_mag_diff <= threshold.h_mag_t) {
-        h_t =
-          weight.pmg *
-          (weight.prev * h_t_prev + weight.mag * h_mag + weight.gyr * h_gyr);
-      } else {
-        h_t = weight.mg * (weight.mag * h_mag + weight.gyr * h_gyr);
-      }
-    } else {
-      if (diff.h_mag_diff <= threshold.h_mag_t) {
-        h_t = h_t_prev;
-      } else {
-        h_t = weight.pg * (weight.prev * h_t_prev + weight.gyr * h_gyr);
-      }
-    }
-    return h_t;
-  };
+  // Constractor
+  const acc_inv = object_sign_inversion(acc);
+  const mag_inv = object_sign_inversion(mag);
 
   // States
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 9.81 });
@@ -215,15 +194,15 @@ export function useHeading(acc, mag, gyr) {
 
   // Custom Hooks
   const gyrAng = useGyrAngle(gyr);
-  const euler = useEulerAngle(acc, mag, gyr);
+  const attitude = useAttitude(acc, mag, gyr);
 
   // Constant declarations
-  const dt = 100;
+  const dt = 100; // [ms]
   const h_decline = (7.5 * Math.PI) / 180;
 
   React.useEffect(() => {
-    if (acc.x + acc.y + acc.z && euler.roll && euler.pitch && euler.yaw) {
-      let acc_gcs = toGCS({ x: -acc.x, y: -acc.y, z: -acc.z }, euler);
+    if (acc.x + acc.y + acc.z) {
+      let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z * 9.81) }));
     }
   }, [acc]);
@@ -234,11 +213,9 @@ export function useHeading(acc, mag, gyr) {
 
   // Magnetometer-based heading direction
   React.useEffect(() => {
-    if (mag.x + mag.y + mag.z && euler.roll && euler.pitch && euler.yaw) {
-      let mag_gcs = toGCS(
-        { x: -mag.x, y: -mag.y, z: -mag.z },
-        { ...euler, yaw: 0 }
-      );
+    let { pitch, roll, yaw } = attitude;
+    if (mag.x + mag.y + mag.z && pitch && roll && yaw) {
+      let mag_gcs = toGCS(mag_inv, { ...attitude, yaw: 0 });
       let h_mag = atan2(-mag_gcs.y, mag_gcs.x) - h_decline;
       h_mag = range(h_mag + Math.PI / 2, '2PI');
 
@@ -270,8 +247,8 @@ export function useHeading(acc, mag, gyr) {
 
   // Gyroscope-based heading direction
   React.useEffect(() => {
-    if (gyr.x + gyr.y + gyr.z && euler.roll && euler.pitch && euler.yaw) {
-      let gt = toGCS(gravity, euler, true);
+    if (gyr.x + gyr.y + gyr.z) {
+      let gt = toGCS(gravity, attitude, true);
       let corrGyr = {
         x: gyr.x - bias.x,
         y: gyr.y - bias.y,
@@ -287,6 +264,37 @@ export function useHeading(acc, mag, gyr) {
   }, [gyr]);
 
   // Updating heading state
+  // Private function: the reasonable heading direction of a user finding algorithm.
+  const _algorithm = (h_mag, h_gyr, h_mag_prev, h_t_prev) => {
+    let weight = { prev: 2, mag: 1, gyr: 2, pmg: 1 / 5, mg: 1 / 3, pg: 1 / 4 };
+    let threshold = {
+      h_cor_t: (5 * Math.PI) / 180,
+      h_mag_t: (2 * Math.PI) / 180,
+    };
+    let diff = {
+      h_cor_diff: Math.abs(h_mag - h_gyr),
+      h_mag_diff: Math.abs(h_mag - h_mag_prev),
+    };
+    let h_t = 0;
+
+    if (diff.h_cor_diff <= threshold.h_cor_t) {
+      if (diff.h_mag_diff <= threshold.h_mag_t) {
+        h_t =
+          weight.pmg *
+          (weight.prev * h_t_prev + weight.mag * h_mag + weight.gyr * h_gyr);
+      } else {
+        h_t = weight.mg * (weight.mag * h_mag + weight.gyr * h_gyr);
+      }
+    } else {
+      if (diff.h_mag_diff <= threshold.h_mag_t) {
+        h_t = h_t_prev;
+      } else {
+        h_t = weight.pg * (weight.prev * h_t_prev + weight.gyr * h_gyr);
+      }
+    }
+    return h_t;
+  };
+
   React.useEffect(() => {
     setHeading((h_prev) =>
       _algorithm(headingMag.current, headingGyr, headingMag.prev, h_prev)

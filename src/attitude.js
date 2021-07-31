@@ -3,7 +3,7 @@ import { View, Text, Image } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
-import { useEulerAngle } from './utils/customHooks';
+import { useAttitude } from './utils/customHooks';
 import { styles } from './utils/styles';
 import { round } from './utils/sensors_utils';
 
@@ -15,7 +15,7 @@ export function AttitudeScreen({ navigation }) {
   const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
-  const { pitch, roll, yaw } = useEulerAngle(acc, mag, gyr);
+  const { pitch, roll, yaw } = useAttitude(acc, mag, gyr);
 
   // Constant declarations
   const dt = 100;

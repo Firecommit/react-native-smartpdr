@@ -1,3 +1,9 @@
+export function object_sign_inversion(obj) {
+  return Object.assign(
+    ...Object.entries(obj).map(([key, val]) => ({ [key]: -val }))
+  );
+}
+
 export function round(n) {
   if (!n) {
     return 0;
