@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, ScrollView, Text } from 'react-native';
+import { View, Text, Image } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
 
-import { useEulerAngle, useGyrAngle } from './utils/customHooks';
+import { useEulerAngle } from './utils/customHooks';
 import { styles } from './utils/styles';
 import { round } from './utils/sensors_utils';
-import { RealTimeLineChart } from './lineChart';
 
 export function AttitudeScreen({ navigation }) {
   // Listeners
@@ -63,10 +62,17 @@ export function AttitudeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <View>
+        <Image
+          source={require('../assets/deviceAttitude.png')}
+          style={{ width: 280, height: 300 }}
+        />
+      </View>
       <Text style={styles.title}>Attitude</Text>
       <Text style={styles.text}>
         pitch: {deg(pitch)} roll: {deg(roll)} yaw: {deg(yaw)}
       </Text>
+      <Text style={styles.title}>Range: (±90°, ±180°, ±180°)</Text>
       <View style={styles.buttonContainer}>
         <Button
           style={styles.button}
