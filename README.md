@@ -36,24 +36,17 @@ The source code for the examples are under the `/src` directory.
 
 ```js
 import {
-  useGyrAngle,
-  useEulerAngle,
+  useAttitude,
   useAccStep,
   useHeading,
   useStepLength,
 } from 'src/utils/customHooks';
 ```
 
-### useGyrAngle
+### useAttitude
 
 ```js
-const { x, y, z } = useGyrAngle(gyroscopeData);
-```
-
-### useEulerAngle
-
-```js
-const { roll, pitch, yaw } = useEulerAngle(
+const { pitch, roll, yaw } = useAttitude(
   accelerometerData,
   magnetometerData,
   gyroscopeData
