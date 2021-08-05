@@ -42,25 +42,31 @@ export function argmin(list1, list2 = list1) {
   return list2.indexOf(list1.reduce((a, b) => Math.min(a, b)));
 }
 
-export function toGCS(lcs, euler, T = false) {
-  let { pitch, roll, yaw } = euler;
-  const Rx = [
-    [1, 0, 0],
-    [0, -Math.cos(pitch), Math.sin(pitch)],
-    [0, Math.sin(pitch), Math.cos(pitch)],
-  ];
+export function toGCS(lcs, attitude, T = false) {
+  let { pitch, roll, yaw } = attitude;
+  const Rx = (deg) => {
+    return [
+      [1, 0, 0],
+      [0, -Math.cos(deg), Math.sin(deg)],
+      [0, Math.sin(deg), Math.cos(deg)],
+    ];
+  };
 
-  const Ry = [
-    [Math.cos(roll), 0, Math.sin(roll)],
-    [0, 1, 0],
-    [-Math.sin(roll), 0, Math.cos(roll)],
-  ];
+  const Ry = (deg) => {
+    return [
+      [Math.cos(deg), 0, Math.sin(deg)],
+      [0, 1, 0],
+      [-Math.sin(deg), 0, Math.cos(deg)],
+    ];
+  };
 
-  const Rz = [
-    [Math.cos(yaw), Math.sin(yaw), 0],
-    [-Math.sin(yaw), Math.cos(yaw), 0],
-    [0, 0, 1],
-  ];
+  const Rz = (deg) => {
+    return [
+      [Math.cos(deg), Math.sin(deg), 0],
+      [-Math.sin(deg), Math.cos(deg), 0],
+      [0, 0, 1],
+    ];
+  };
 
   const _matrix_times = (mat1, mat2) => {
     let ret = new Array();
@@ -78,7 +84,7 @@ export function toGCS(lcs, euler, T = false) {
     return ret;
   };
 
-  const R = _matrix_times(_matrix_times(Rz, Rx), Ry);
+  const R = _matrix_times(_matrix_times(Rz(yaw), Rx(pitch)), Ry(roll));
 
   // T mean transpose. If T is true, R is transposed matrix.
   // If T is false, R is rotation matrix.

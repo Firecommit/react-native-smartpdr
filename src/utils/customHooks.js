@@ -6,6 +6,7 @@ import {
   toGCS,
   range,
   object_sign_inversion,
+  round,
 } from './sensors_utils';
 
 export function useGyrAngle(gyr) {
@@ -23,7 +24,6 @@ export function useAttitude(acc, mag, gyr) {
   // Constractor
   const initState = { pitch: 0, roll: 0, yaw: 0 };
   const acc_inv = object_sign_inversion(acc);
-  const mag_inv = object_sign_inversion(mag);
 
   // States
   const [init, setInit] = React.useState(initState);
@@ -48,15 +48,17 @@ export function useAttitude(acc, mag, gyr) {
 
   React.useEffect(() => {
     if (mag.x + mag.y + mag.z) {
-      let mx =
-          mag_inv.x * Math.cos(euler.roll) + mag_inv.z * Math.sin(euler.roll),
+      let mx = mag.x * Math.cos(euler.roll) + mag.z * Math.sin(euler.roll),
         my =
-          mag_inv.x * (-Math.sin(euler.pitch) * Math.sin(euler.roll)) +
-          mag_inv.y * -Math.cos(euler.pitch) +
-          mag_inv.z * Math.sin(euler.pitch) * Math.cos(euler.roll);
-      let yaw = Math.atan2(my, mx);
-      if (!init.yaw) setInit((i) => ({ ...i, yaw: yaw }));
-      setEuler((e) => ({ ...e, yaw: yaw }));
+          mag.x * (-Math.sin(euler.pitch) * Math.sin(euler.roll)) +
+          mag.y * -Math.cos(euler.pitch) +
+          mag.z * Math.sin(euler.pitch) * Math.cos(euler.roll);
+      let yaw = range(Math.atan2(my, mx) - init.yaw, '2PI');
+      if (!init.yaw) {
+        setInit((i) => ({ ...i, yaw: yaw }));
+      } else {
+        setEuler((e) => ({ ...e, yaw: range(yaw, 'PI') }));
+      }
     }
   }, [mag]);
 
@@ -71,7 +73,7 @@ export function useAttitude(acc, mag, gyr) {
         gyr.x * (-Math.sin(euler.roll) / Math.cos(euler.pitch)) +
         gyr.z * (Math.cos(euler.roll) / Math.cos(euler.pitch));
 
-      if (attitude.roll && attitude.pitch && attitude.yaw) {
+      if (attitude.roll && attitude.pitch) {
         setAttitude((att) => ({
           pitch: compFilter(att.pitch + pitch * (dt / 1000), euler.pitch),
           roll: compFilter(
@@ -81,8 +83,8 @@ export function useAttitude(acc, mag, gyr) {
           yaw: compFilter(range(att.yaw + yaw * (dt / 1000), 'PI'), euler.yaw),
         }));
       } else {
-        if (init.roll && init.pitch && init.yaw) {
-          setAttitude(init);
+        if (init.roll && init.pitch) {
+          setAttitude({ ...init, yaw: 0 });
         }
       }
     }
@@ -179,7 +181,6 @@ export function useAccStep(acc, mag, gyr) {
 export function useHeading(acc, mag, gyr) {
   // Constractor
   const acc_inv = object_sign_inversion(acc);
-  const mag_inv = object_sign_inversion(mag);
 
   // States
   const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 9.81 });
@@ -204,6 +205,7 @@ export function useHeading(acc, mag, gyr) {
     if (acc.x + acc.y + acc.z) {
       let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z * 9.81) }));
+      if (Math.abs(round(acc.z)) == 1) setHeadingGyr(headingMag.current);
     }
   }, [acc]);
 
@@ -215,9 +217,9 @@ export function useHeading(acc, mag, gyr) {
   React.useEffect(() => {
     let { pitch, roll, yaw } = attitude;
     if (mag.x + mag.y + mag.z && pitch && roll && yaw) {
-      let mag_gcs = toGCS(mag_inv, { ...attitude, yaw: 0 });
+      let mag_gcs = toGCS(mag, { ...attitude, yaw: 0 });
       let h_mag = atan2(-mag_gcs.y, mag_gcs.x) - h_decline;
-      h_mag = range(h_mag + Math.PI / 2, '2PI');
+      h_mag = range(h_mag - Math.PI / 2, '2PI');
 
       // Calculated Gyroscope bias
       if (Math.abs(h_mag - headingMag.current) > (0.7 * Math.PI) / 180) {
@@ -236,12 +238,8 @@ export function useHeading(acc, mag, gyr) {
         });
       }
 
+      if (!headingMag.current) setHeadingGyr(h_mag);
       setHeadingMag((h) => ({ ...h, prev: h.current, current: h_mag }));
-      if (
-        !headingMag.current ||
-        Math.abs(h_mag - headingGyr) > (10 * Math.PI) / 180
-      )
-        setHeadingGyr(h_mag);
     }
   }, [mag]);
 

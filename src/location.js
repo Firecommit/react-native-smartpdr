@@ -5,7 +5,7 @@ import { Button } from 'react-native-paper';
 import Canvas from 'react-native-canvas';
 
 // custom modules
-import { styles } from './utils/styles';
+import { range } from './utils/sensors_utils';
 import { useHeading, useStepLength } from './utils/customHooks';
 
 export function LocationScreen({ navigation }) {
@@ -91,8 +91,8 @@ export function LocationScreen({ navigation }) {
       x,
       y,
       55,
-      heading - Math.PI / 2 - (20 * Math.PI) / 180,
-      heading - Math.PI / 2 + (20 * Math.PI) / 180,
+      range(heading - Math.PI / 2 - (20 * Math.PI) / 180, '2PI'),
+      range(heading - Math.PI / 2 + (20 * Math.PI) / 180, '2PI'),
       false
     );
     ctx.lineTo(x, y);
