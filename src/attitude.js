@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image } from 'react-native';
 import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
 import { Button } from 'react-native-paper';
@@ -9,10 +9,10 @@ import { round } from './utils/sensors_utils';
 
 export function AttitudeScreen({ navigation }) {
   // Listeners
-  const [subscription, setSubscription] = React.useState(null);
-  const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
-  const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
+  const [subscription, setSubscription] = useState(null);
+  const [acc, setAcc] = useState({ x: 0, y: 0, z: 0 });
+  const [mag, setMag] = useState({ x: 0, y: 0, z: 0 });
+  const [gyr, setGyr] = useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
   const { pitch, roll, yaw } = useAttitude(acc, mag, gyr);
@@ -46,7 +46,7 @@ export function AttitudeScreen({ navigation }) {
     setSubscription(null);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     _subscribe;
     return () => {
       Accelerometer.removeAllListeners();

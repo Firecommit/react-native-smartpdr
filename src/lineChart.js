@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Platform, Dimensions } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
@@ -41,11 +41,11 @@ const styles = StyleSheet.create({
 
 export function RealTimeLineChart({ title, data }) {
   const theme = useTheme();
-  const [file, setFile] = React.useState(null);
-  const [code, setCode] = React.useState(null);
-  const webref = React.useRef(null);
+  const [file, setFile] = useState(null);
+  const [code, setCode] = useState(null);
+  const webref = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (Platform.OS === 'android') {
       download().then((downloadFile) => {
         setFile(downloadFile);
@@ -85,7 +85,7 @@ export function RealTimeLineChart({ title, data }) {
     `);
   }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let updateCode = `
       var step = chart.data.datasets[0].data;
       step.push(${data});

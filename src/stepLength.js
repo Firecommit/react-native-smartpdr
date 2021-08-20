@@ -1,27 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
-import { Text, View, ScrollView } from 'react-native';
+import { Text, View } from 'react-native';
 import { Button } from 'react-native-paper';
 
 // custom modules
 import { styles } from './utils/styles';
-import { RealTimeLineChart } from './lineChart';
-import { useAccStep, useHeading, useStepLength } from './utils/customHooks';
+import { useAccStep, useStepLength } from './utils/customHooks';
 import { round } from './utils/sensors_utils';
 
 export function StepLengthScreen({ navigation }) {
   // Listeners
-  const [subscription, setSubscription] = React.useState(null);
-  const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
-  const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
+  const [subscription, setSubscription] = useState(null);
+  const [acc, setAcc] = useState({ x: 0, y: 0, z: 0 });
+  const [mag, setMag] = useState({ x: 0, y: 0, z: 0 });
+  const [gyr, setGyr] = useState({ x: 0, y: 0, z: 0 });
 
   // Custom Hooks
   const [accStep, accEvent] = useAccStep(acc, mag, gyr);
   const [stepLength, headingStep] = useStepLength(acc, mag, gyr);
 
   // States
-  const [stepCount, setStepCount] = React.useState(0);
+  const [stepCount, setStepCount] = useState(0);
 
   // Constant declarations
   const dt = 100;
@@ -52,7 +51,7 @@ export function StepLengthScreen({ navigation }) {
     setSubscription(null);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     _subscribe;
     return () => {
       Accelerometer.removeAllListeners();
@@ -62,7 +61,7 @@ export function StepLengthScreen({ navigation }) {
     };
   }, [navigation]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (accEvent) {
       setStepCount((c) => c + 1);
     }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AppLoading from 'expo-app-loading';
 import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
@@ -10,13 +10,13 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 export function AnimatedAppLoader({ children, image }) {
-  const [isSplashReady, setSplashReady] = React.useState(false);
+  const [isSplashReady, setSplashReady] = useState(false);
 
-  const startAsync = React.useMemo(
+  const startAsync = useMemo(
     () => () => Asset.fromURI(image).downloadAsync(),
     [image]
   );
-  const onFinish = React.useMemo(() => setSplashReady(true), []);
+  const onFinish = useMemo(() => setSplashReady(true), []);
   if (!isSplashReady) {
     return (
       <AppLoading
@@ -32,12 +32,11 @@ export function AnimatedAppLoader({ children, image }) {
 }
 
 function AnimatedSplashScreen({ children, image }) {
-  const animation = React.useMemo(() => new Animated.Value(1), []);
-  const [isAppReady, setAppReady] = React.useState(false);
-  const [isSplashAnimationComplete, setAnimationComplete] =
-    React.useState(false);
+  const animation = useMemo(() => new Animated.Value(1), []);
+  const [isAppReady, setAppReady] = useState(false);
+  const [isSplashAnimationComplete, setAnimationComplete] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAppReady) {
       Animated.timing(animation, {
         toValue: 0,
@@ -47,7 +46,7 @@ function AnimatedSplashScreen({ children, image }) {
     }
   }, [isAppReady]);
 
-  const onImageLoaded = React.useMemo(() => async () => {
+  const onImageLoaded = useMemo(() => async () => {
     try {
       await SplashScreen.hideAsync();
       await Promise.all([]);

@@ -1,7 +1,6 @@
-import React from 'react';
-import { Dimensions, ScrollView, Text, View } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { Dimensions, View } from 'react-native';
 import { Accelerometer, Magnetometer, Gyroscope } from 'expo-sensors';
-import { Button } from 'react-native-paper';
 import Canvas from 'react-native-canvas';
 
 // custom modules
@@ -10,12 +9,12 @@ import { useHeading, useStepLength } from './utils/customHooks';
 
 export function LocationScreen({ navigation }) {
   // Listeners
-  const [acc, setAcc] = React.useState({ x: 0, y: 0, z: 0 });
-  const [mag, setMag] = React.useState({ x: 0, y: 0, z: 0 });
-  const [gyr, setGyr] = React.useState({ x: 0, y: 0, z: 0 });
-  const canvasRef = React.useRef(null);
-  const [lineWidth, setLineWidth] = React.useState({ val: 2.5, sum: 0.2 });
-  const [location, setLocation] = React.useState({ x: 0, y: 0 });
+  const [acc, setAcc] = useState({ x: 0, y: 0, z: 0 });
+  const [mag, setMag] = useState({ x: 0, y: 0, z: 0 });
+  const [gyr, setGyr] = useState({ x: 0, y: 0, z: 0 });
+  const canvasRef = useRef(null);
+  const [lineWidth, setLineWidth] = useState({ val: 2.5, sum: 0.2 });
+  const [location, setLocation] = useState({ x: 0, y: 0 });
 
   // Custom Hooks
   const heading = useHeading(acc, mag, gyr);
@@ -30,7 +29,7 @@ export function LocationScreen({ navigation }) {
   Magnetometer.setUpdateInterval(dt);
   Gyroscope.setUpdateInterval(dt);
 
-  React.useEffect(() => {
+  useEffect(() => {
     Accelerometer.addListener((data) => {
       setAcc(data);
     });
@@ -48,7 +47,7 @@ export function LocationScreen({ navigation }) {
     };
   }, [navigation]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (lineWidth.val > 5 || lineWidth.val < 2.5) {
       setLineWidth((lw) => ({ ...lw, sum: -lw.sum }));
     }
@@ -56,7 +55,7 @@ export function LocationScreen({ navigation }) {
     _handleCanvas(canvasRef.current);
   }, [heading]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     let nx = stepLength ? stepLength * Math.sin(headingStep) * 10 : 0,
       ny = stepLength ? stepLength * Math.cos(headingStep) * 10 : 0;
     setLocation((l) => ({

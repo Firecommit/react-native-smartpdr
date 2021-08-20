@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   argmin,
   LPFilter,
@@ -6,13 +6,12 @@ import {
   toGCS,
   range,
   object_sign_inversion,
-  round,
 } from './sensors_utils';
 
 export function useGyrAngle(gyr) {
-  const ref = React.useRef({ pitch: 0, roll: 0, yaw: 0 });
+  const ref = useRef({ pitch: 0, roll: 0, yaw: 0 });
   const dt = 100;
-  React.useEffect(() => {
+  useEffect(() => {
     ref.current.pitch += gyr.x * (dt / 1000);
     ref.current.roll += gyr.y * (dt / 1000);
     ref.current.yaw += gyr.z * (dt / 1000);
@@ -26,14 +25,14 @@ export function useAttitude(acc, mag, gyr) {
   const acc_inv = object_sign_inversion(acc);
 
   // States
-  const [init, setInit] = React.useState(initState);
-  const [euler, setEuler] = React.useState(initState);
-  const [attitude, setAttitude] = React.useState(initState);
+  const [init, setInit] = useState(initState);
+  const [euler, setEuler] = useState(initState);
+  const [attitude, setAttitude] = useState(initState);
 
   // Constant declarations
   const dt = 100; // [ms]
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (acc.x + acc.y + acc.z) {
       let pitch = Math.atan2(
         acc_inv.y,
@@ -46,7 +45,7 @@ export function useAttitude(acc, mag, gyr) {
     }
   }, [acc]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (mag.x + mag.y + mag.z) {
       let mx = mag.x * Math.cos(euler.roll) + mag.z * Math.sin(euler.roll),
         my =
@@ -62,7 +61,7 @@ export function useAttitude(acc, mag, gyr) {
     }
   }, [mag]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (gyr.x + gyr.y + gyr.z) {
       let pitch = gyr.x * Math.cos(euler.roll) + gyr.z * Math.sin(euler.roll);
       let roll =
@@ -97,11 +96,11 @@ export function useAccStep(acc, mag, gyr) {
   const acc_inv = object_sign_inversion(acc);
 
   // States
-  const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 1 });
-  const [movingWindow, setMovingWindow] = React.useState([]);
-  const [accStep, setAccStep] = React.useState(0);
-  const [accEvent, setAccEvent] = React.useState(0);
-  const [accList, setAccList] = React.useState([]);
+  const [gravity, setGravity] = useState({ x: 0, y: 0, z: 1 });
+  const [movingWindow, setMovingWindow] = useState([]);
+  const [accStep, setAccStep] = useState(0);
+  const [accEvent, setAccEvent] = useState(0);
+  const [accList, setAccList] = useState([]);
 
   // Custom Hooks
   const attitude = useAttitude(acc, mag, gyr);
@@ -155,7 +154,7 @@ export function useAccStep(acc, mag, gyr) {
     return cond.peak && cond.pp && cond.slope ? accList[t] : 0;
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (acc.x + acc.y + acc.z) {
       let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z) }));
@@ -183,15 +182,15 @@ export function useHeading(acc, mag, gyr) {
   const acc_inv = object_sign_inversion(acc);
 
   // States
-  const [gravity, setGravity] = React.useState({ x: 0, y: 0, z: 9.81 });
-  const [gyrAngTI, setGyrAngTI] = React.useState([]);
-  const [bias, setBias] = React.useState({ x: 0, y: 0, z: 0 });
-  const [headingMag, setHeadingMag] = React.useState({
+  const [gravity, setGravity] = useState({ x: 0, y: 0, z: 9.81 });
+  const [gyrAngTI, setGyrAngTI] = useState([]);
+  const [bias, setBias] = useState({ x: 0, y: 0, z: 0 });
+  const [headingMag, setHeadingMag] = useState({
     prev: null,
     current: 0,
   });
-  const [headingGyr, setHeadingGyr] = React.useState(0);
-  const [heading, setHeading] = React.useState(0);
+  const [headingGyr, setHeadingGyr] = useState(0);
+  const [heading, setHeading] = useState(0);
 
   // Custom Hooks
   const gyrAng = useGyrAngle(gyr);
@@ -201,7 +200,7 @@ export function useHeading(acc, mag, gyr) {
   const dt = 100; // [ms]
   const h_decline = (7.5 * Math.PI) / 180;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (acc.x + acc.y + acc.z) {
       let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z * 9.81) }));
@@ -213,7 +212,7 @@ export function useHeading(acc, mag, gyr) {
   };
 
   // Magnetometer-based heading direction
-  React.useEffect(() => {
+  useEffect(() => {
     let { pitch, roll, yaw } = attitude;
     if (mag.x + mag.y + mag.z && pitch && roll && yaw) {
       let mag_gcs = toGCS(mag, { ...attitude, yaw: 0 });
@@ -237,18 +236,13 @@ export function useHeading(acc, mag, gyr) {
         });
       }
 
-      if (
-        !headingMag.current ||
-        headingMag.current < (5 * Math.PI) / 180 ||
-        headingMag.current > (355 * Math.PI) / 180
-      )
-        setHeadingGyr(h_mag);
+      if (!headingMag.current) setHeadingGyr(h_mag);
       setHeadingMag((h) => ({ ...h, prev: h.current, current: h_mag }));
     }
   }, [mag]);
 
   // Gyroscope-based heading direction
-  React.useEffect(() => {
+  useEffect(() => {
     if (gyr.x + gyr.y + gyr.z) {
       let gt = toGCS(gravity, attitude, true);
       let corrGyr = {
@@ -297,10 +291,16 @@ export function useHeading(acc, mag, gyr) {
     return h_t;
   };
 
-  React.useEffect(() => {
-    setHeading((h_prev) =>
-      _algorithm(headingMag.current, headingGyr, headingMag.prev, h_prev)
-    );
+  useEffect(() => {
+    if (headingMag.current && headingGyr) {
+      if (headingGyr % (Math.PI / 2) <= (5 * Math.PI) / 180) {
+        setHeadingMag({ prev: null, current: 0 });
+        setHeadingGyr(0);
+      }
+      setHeading((h_prev) =>
+        _algorithm(headingMag.current, headingGyr, headingMag.prev, h_prev)
+      );
+    }
   }, [headingMag, headingGyr]);
 
   return heading;
@@ -312,17 +312,17 @@ export function useStepLength(acc, mag, gyr) {
   const heading = useHeading(acc, mag, gyr);
 
   // States
-  const [accList, setAccList] = React.useState([]);
-  const [headingList, setHeadingList] = React.useState([]);
-  const [valleyList, setValleyList] = React.useState([]);
-  const [accIdx, setAccIdx] = React.useState(-1);
-  const [headingIdx, setHeadingIdx] = React.useState(-1);
-  const [ret, setRet] = React.useState({ stepLength: 0, headingStep: 0 });
+  const [accList, setAccList] = useState([]);
+  const [headingList, setHeadingList] = useState([]);
+  const [valleyList, setValleyList] = useState([]);
+  const [accIdx, setAccIdx] = useState(-1);
+  const [headingIdx, setHeadingIdx] = useState(-1);
+  const [ret, setRet] = useState({ stepLength: 0, headingStep: 0 });
 
   // Constant declarations
   const acc_th = 3.23;
 
-  React.useEffect(() => {
+  useEffect(() => {
     setAccList((al) => [...al, accStep]);
     setHeadingList((hl) => [...hl, heading]);
     if (accEvent) {
