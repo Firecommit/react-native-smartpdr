@@ -205,7 +205,6 @@ export function useHeading(acc, mag, gyr) {
     if (acc.x + acc.y + acc.z) {
       let acc_gcs = toGCS(acc_inv, attitude);
       setGravity((g) => ({ ...g, z: LPFilter(g.z, acc_gcs.z * 9.81) }));
-      if (Math.abs(round(acc.z)) == 1) setHeadingGyr(headingMag.current);
     }
   }, [acc]);
 
@@ -238,7 +237,12 @@ export function useHeading(acc, mag, gyr) {
         });
       }
 
-      if (!headingMag.current) setHeadingGyr(h_mag);
+      if (
+        !headingMag.current ||
+        headingMag.current < (5 * Math.PI) / 180 ||
+        headingMag.current > (355 * Math.PI) / 180
+      )
+        setHeadingGyr(h_mag);
       setHeadingMag((h) => ({ ...h, prev: h.current, current: h_mag }));
     }
   }, [mag]);
