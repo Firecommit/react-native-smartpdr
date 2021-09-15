@@ -14,11 +14,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { FeedScreen } from './src/feed';
-import { AttitudeScreen } from './src/component/attitude';
-import { StepScreen } from './src/component/step';
-import { HeadingScreen } from './src/component/heading';
-import { LengthScreen } from './src/component/length';
-import { LocationScreen } from './src/component/location';
+import { useSensorListenerExample } from './src/examples/useSensorListenerExample';
 
 export const App = () => {
   const Stack = createNativeStackNavigator();
@@ -27,25 +23,9 @@ export const App = () => {
       component: FeedScreen,
       options: { headerTitle: 'Feed Screen' },
     },
-    Attitude: {
-      component: AttitudeScreen,
-      options: { headerTitle: 'Device Attitude Estimation' },
-    },
-    Step: {
-      component: StepScreen,
-      options: { headerTitle: 'Step Event Detection' },
-    },
-    Heading: {
-      component: HeadingScreen,
-      options: { headerTitle: 'Heading Direction Estimation' },
-    },
-    Length: {
-      component: LengthScreen,
-      options: { headerTitle: 'Step Length Estimation' },
-    },
-    Location: {
-      component: LocationScreen,
-      options: { headerTitle: 'Indoor Location Estimation' },
+    Sensors: {
+      component: useSensorListenerExample,
+      options: { headerTitle: 'Embeded Sensors Example' },
     },
   };
   return (
