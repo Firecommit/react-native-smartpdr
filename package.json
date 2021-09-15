@@ -13,11 +13,12 @@
     "@react-navigation/native": "^6.0.2",
     "@react-navigation/native-stack": "^6.1.0",
     "@react-navigation/routers": "^6.0.1",
+    "expo-sensors": "^10.2.2",
     "react": "17.0.2",
     "react-native": "0.65.1",
     "react-native-safe-area-context": "^3.3.2",
     "react-native-screens": "^3.6.0",
-    "react-native-sensors": "^7.3.3"
+    "react-native-unimodules": "^0.14.8"
   },
   "devDependencies": {
     "@babel/core": "^7.12.9",
