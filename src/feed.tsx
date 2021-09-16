@@ -5,6 +5,7 @@ import { Props } from './types';
 export const FeedScreen = ({ navigation }: Props) => {
   const ListOption = {
     Sensors: { title: 'Embeded Sensors Example' },
+    Attitude: { title: 'Device Attitude Estimation' },
   };
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
