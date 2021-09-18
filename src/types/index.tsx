@@ -10,9 +10,16 @@ export type Props = NativeStackScreenProps<ParamListBase, 'Feed'>;
 export type SubscriptArray = Array<
   ReturnType<typeof Accelerometer.addListener>
 >;
+
 export type SensorDataRefArray = Array<RefObject<ThreeAxisMeasurement>>;
+
 export type AttitudeData = {
   pitch: number;
   roll: number;
   yaw: number;
+};
+
+export type StepData = {
+  count: number;
+  length: number;
 };

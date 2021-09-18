@@ -16,6 +16,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FeedScreen } from './src/feed';
 import { useSensorListenerExample } from './src/examples/useSensorListenerExample';
 import { useAttitudeExample } from './src/examples/useAttitudeExample';
+import { useStepExample } from './src/examples/useStepExample';
 
 export const App = () => {
   const Stack = createNativeStackNavigator();
@@ -31,6 +32,10 @@ export const App = () => {
     Attitude: {
       component: useAttitudeExample,
       options: { headerTitle: 'Device Attitude Estimation' },
+    },
+    Step: {
+      component: useStepExample,
+      options: { headerTitle: 'Step Event Detection' },
     },
   };
   return (

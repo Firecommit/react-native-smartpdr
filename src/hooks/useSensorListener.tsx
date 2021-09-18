@@ -13,7 +13,6 @@ export const useSensorListener = (
   interval: number
 ) => {
   const initSensorData = { x: 0, y: 0, z: 0 };
-  const timerId = useRef<ReturnType<typeof setInterval>>();
   const acc = useRef<ThreeAxisMeasurement>(initSensorData);
   const mag = useRef<ThreeAxisMeasurement>(initSensorData);
   const gyr = useRef<ThreeAxisMeasurement>(initSensorData);
@@ -32,6 +31,7 @@ export const useSensorListener = (
         subscription = [
           Accelerometer.addListener((data) => {
             acc.current = data;
+            callback(currentData);
           }),
         ];
         break;
@@ -40,6 +40,7 @@ export const useSensorListener = (
         subscription = [
           Magnetometer.addListener((data) => {
             mag.current = data;
+            callback(currentData);
           }),
         ];
         break;
@@ -48,6 +49,7 @@ export const useSensorListener = (
         subscription = [
           Gyroscope.addListener((data) => {
             gyr.current = data;
+            callback(currentData);
           }),
         ];
         break;
@@ -62,6 +64,7 @@ export const useSensorListener = (
           }),
           Gyroscope.addListener((data) => {
             gyr.current = data;
+            callback(currentData);
           }),
         ];
         break;
@@ -80,12 +83,8 @@ export const useSensorListener = (
 
   useEffect(() => {
     subscribe();
-    timerId.current = setInterval(() => callback(currentData), interval);
     return () => {
-      if (timerId.current) clearInterval(timerId.current);
-      setTimeout(() => {
-        unsubscribe();
-      }, 1000);
+      unsubscribe();
     };
   }, []);
 };
