@@ -17,6 +17,7 @@ import { FeedScreen } from './src/feed';
 import { useSensorListenerExample } from './src/examples/useSensorListenerExample';
 import { useAttitudeExample } from './src/examples/useAttitudeExample';
 import { useStepExample } from './src/examples/useStepExample';
+import { useHeadingExample } from './src/examples/useHeadingExample';
 
 export const App = () => {
   const Stack = createNativeStackNavigator();
@@ -36,6 +37,10 @@ export const App = () => {
     Step: {
       component: useStepExample,
       options: { headerTitle: 'Step Event Detection' },
+    },
+    Heading: {
+      component: useHeadingExample,
+      options: { headerTitle: 'Heading Direction Estimation' },
     },
   };
   return (

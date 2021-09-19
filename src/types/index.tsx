@@ -12,6 +12,11 @@ export type SubscriptArray = Array<
 >;
 
 export type SensorDataRefArray = Array<RefObject<ThreeAxisMeasurement>>;
+export type SensorDataRefObj = {
+  acc: RefObject<ThreeAxisMeasurement>;
+  mag: RefObject<ThreeAxisMeasurement>;
+  gyr: RefObject<ThreeAxisMeasurement>;
+};
 
 export type AttitudeData = {
   pitch: number;

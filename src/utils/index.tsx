@@ -61,7 +61,8 @@ export const LowPassFilter = (
 
 export const LCS2GCS = (
   data: ThreeAxisMeasurement,
-  attitude: AttitudeData
+  attitude: AttitudeData,
+  mode: 'normal' | 'transpose' = 'normal'
 ): ThreeAxisMeasurement => {
   const { pitch, roll, yaw } = attitude;
 
@@ -97,10 +98,17 @@ export const LCS2GCS = (
 
   const R = MatrixProduct(MatrixProduct(Rz(yaw), Rx(pitch)), Ry(roll));
 
+  if (mode === 'transpose') {
+    return {
+      x: R[0][0] * data.x + R[1][0] * data.y + R[2][0] * data.z,
+      y: R[0][1] * data.x + R[1][1] * data.y + R[2][1] * data.z,
+      z: R[0][2] * data.x + R[1][2] * data.y + R[2][2] * data.z,
+    };
+  }
   return {
-    x: R[0][0] * data.x + R[1][0] * data.y + R[2][0] * data.z,
-    y: R[0][1] * data.x + R[1][1] * data.y + R[2][1] * data.z,
-    z: R[0][2] * data.x + R[1][2] * data.y + R[2][2] * data.z,
+    x: R[0][0] * data.x + R[0][1] * data.y + R[0][2] * data.z,
+    y: R[1][0] * data.x + R[1][1] * data.y + R[1][2] * data.z,
+    z: R[2][0] * data.x + R[2][1] * data.y + R[2][2] * data.z,
   };
 };
 
@@ -151,4 +159,49 @@ export const StepLength = (
   const fourthRootLength = 1.479 * peak2peak ** (1 / 4) + -1.259;
   const logarithmLength = 1.131 * Math.log(peak2peak) + 0.159;
   return peak2peak < threshold ? fourthRootLength : logarithmLength;
+};
+
+export const atan2 = (y: number, x: number) => {
+  return 2 * Math.atan(y / (Math.sqrt(x ** 2 + y ** 2) + x));
+};
+
+export const ScalarProjection = (
+  dataA: ThreeAxisMeasurement,
+  dataB: ThreeAxisMeasurement
+) => {
+  return (
+    (dataA.x * dataB.x + dataA.y * dataB.y + dataA.z * dataB.z) /
+    Math.sqrt(dataB.x ** 2 + dataB.y ** 2 + dataB.z ** 2)
+  );
+};
+
+export const HeadingDirectionFinding = (
+  headingMag: number,
+  headingGyr: number,
+  prevHeadingMag: number,
+  prevHeading: number
+) => {
+  const weight = { prev: 2, mag: 1, gyr: 2, pmg: 1 / 5, mg: 1 / 3, pg: 1 / 4 };
+  const [correlation, validation] = [5, 2].map((e) => (e * Math.PI) / 180);
+  const [corrDiff, magDiff] = [headingGyr, prevHeadingMag].map((e) =>
+    Math.abs(headingMag - e)
+  );
+  let heading = 0;
+
+  if (corrDiff <= correlation) {
+    if (magDiff <= validation) {
+      heading =
+        weight.pmg *
+        (weight.prev * prevHeading +
+          weight.mag * headingMag +
+          weight.gyr * headingGyr);
+    } else {
+      heading = weight.mg * (weight.mag * headingMag + weight.gyr * headingGyr);
+    }
+  } else if (magDiff <= validation) {
+    heading = prevHeading;
+  } else {
+    heading = weight.pg * (weight.prev * prevHeading + weight.gyr * headingGyr);
+  }
+  return heading;
 };
