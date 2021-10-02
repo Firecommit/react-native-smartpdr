@@ -18,6 +18,7 @@ import { useSensorListenerExample } from './src/examples/useSensorListenerExampl
 import { useAttitudeExample } from './src/examples/useAttitudeExample';
 import { useStepExample } from './src/examples/useStepExample';
 import { useHeadingExample } from './src/examples/useHeadingExample';
+import { backgroundTaskExample } from './src/examples/backgroundTaskExample';
 
 export const App = () => {
   const Stack = createNativeStackNavigator();
@@ -41,6 +42,10 @@ export const App = () => {
     Heading: {
       component: useHeadingExample,
       options: { headerTitle: 'Heading Direction Estimation' },
+    },
+    Background: {
+      component: backgroundTaskExample,
+      options: { headerTitle: 'Background Task Example' },
     },
   };
   return (

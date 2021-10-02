@@ -8,6 +8,7 @@ export const FeedScreen = ({ navigation }: Props) => {
     Attitude: { title: 'Device Attitude Estimation' },
     Step: { title: 'Step Event Estimation' },
     Heading: { title: 'Heading Direction Estimation' },
+    Background: { title: 'Background Task Example' },
   };
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

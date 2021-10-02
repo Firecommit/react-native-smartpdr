@@ -5,7 +5,10 @@ import {
   Gyroscope,
   ThreeAxisMeasurement,
 } from 'expo-sensors';
-import { SensorDataRefArray, SubscriptArray } from '../types';
+import BackgroundGeolocation from 'react-native-background-geolocation';
+import { AppState, Platform } from 'react-native';
+import BackgroundTimer from 'react-native-background-timer';
+import { SensorDataRefArray } from '../types';
 
 export const useSensorListener = (
   sensor: 'accelerometer' | 'magnetometer' | 'gyroscope' | 'fusion',
@@ -17,74 +20,127 @@ export const useSensorListener = (
   const mag = useRef<ThreeAxisMeasurement>(initSensorData);
   const gyr = useRef<ThreeAxisMeasurement>(initSensorData);
 
-  Accelerometer.setUpdateInterval(interval);
-  Magnetometer.setUpdateInterval(interval);
-  Gyroscope.setUpdateInterval(interval);
+  const bgGeo = BackgroundGeolocation;
+  const bgTime = BackgroundTimer;
+  const currentData: SensorDataRefArray = [acc, mag, gyr];
+  let timeId: ReturnType<typeof setInterval>;
 
-  let subscription: SubscriptArray;
-  let currentData: SensorDataRefArray;
+  const backgroundWatch = () => {
+    bgGeo.watchPosition(
+      (location) => {
+        console.log('mode: backgroundWatch');
+        // bgTime.stopBackgroundTimer();
+        subscribe();
+      },
+      (error) => {
+        throw error;
+      },
+      { interval: 60000 }
+    );
+  };
+
+  const backgroundTimer = () => {
+    bgTime.runBackgroundTimer(() => {
+      subscribe();
+    }, interval);
+  };
+
+  const backgroundTask = () => {
+    bgGeo.startBackgroundTask().then((taskId) => {
+      console.log('mode: backgroundTask');
+      subscribe();
+      bgGeo.stopBackgroundTask(taskId);
+    });
+  };
 
   const subscribe = () => {
-    switch (sensor) {
-      case 'accelerometer':
-        currentData = [acc];
-        subscription = [
+    unsubscribe().then((msg) => {
+      Accelerometer.setUpdateInterval(interval);
+      Magnetometer.setUpdateInterval(interval);
+      Gyroscope.setUpdateInterval(interval);
+      switch (sensor) {
+        case 'accelerometer':
           Accelerometer.addListener((data) => {
             acc.current = data;
-            callback(currentData);
-          }),
-        ];
-        break;
-      case 'magnetometer':
-        currentData = [mag];
-        subscription = [
+          });
+          break;
+        case 'magnetometer':
           Magnetometer.addListener((data) => {
             mag.current = data;
-            callback(currentData);
-          }),
-        ];
-        break;
-      case 'gyroscope':
-        currentData = [gyr];
-        subscription = [
+          });
+          break;
+        case 'gyroscope':
           Gyroscope.addListener((data) => {
             gyr.current = data;
-            callback(currentData);
-          }),
-        ];
-        break;
-      case 'fusion':
-        currentData = [acc, mag, gyr];
-        subscription = [
+          });
+          break;
+        case 'fusion':
           Accelerometer.addListener((data) => {
             acc.current = data;
-          }),
+          });
           Magnetometer.addListener((data) => {
             mag.current = data;
-          }),
+          });
           Gyroscope.addListener((data) => {
             gyr.current = data;
-            callback(currentData);
-          }),
-        ];
-        break;
-      default:
-        throw new Error(
-          'Sensor Subscription Error: does not exist sensor type.'
-        );
-    }
+          });
+          break;
+        default:
+          throw new Error(
+            'Sensor Subscription Error: does not exist sensor type.'
+          );
+      }
+    });
   };
 
   const unsubscribe = () => {
     Accelerometer.removeAllListeners();
     Magnetometer.removeAllListeners();
     Gyroscope.removeAllListeners();
+    return new Promise((resolve, reject) => {
+      resolve('unsubscribe');
+    });
   };
 
   useEffect(() => {
-    subscribe();
+    if (Platform.OS === 'ios') {
+      bgGeo.requestPermission();
+    }
+    bgGeo.ready(
+      {
+        stopOnTerminate: false,
+        startOnBoot: true,
+      },
+      (state) => {
+        if (!state.enabled) {
+          bgGeo.start();
+        }
+        backgroundWatch();
+        // backgroundTimer();
+        backgroundTask();
+      }
+    );
+
+    timeId = setInterval(() => callback(currentData), interval);
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        // bgTime.stopBackgroundTimer();
+        unsubscribe().then((msg) => {
+          backgroundTask();
+          // backgroundTimer();
+        });
+      }
+    });
+
     return () => {
-      unsubscribe();
+      unsubscribe().then((msg) => {
+        /* @ts-ignore */
+        appState.remove();
+        bgGeo.stopWatchPosition();
+        bgGeo.stop();
+        bgTime.stopBackgroundTimer();
+        clearInterval(timeId);
+      });
     };
   }, []);
 };
