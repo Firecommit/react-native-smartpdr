@@ -13,10 +13,10 @@ import {
 export const useHeading = (
   attitude: RefObject<AttitudeData>
 ): [
-  number,
+  RefObject<number>,
   ({ acc, mag, gyr }: SensorDataRefObj, interval: number) => void
 ] => {
-  const [heading, setHeading] = useState(0);
+  const heading = useRef(0);
   const headingMag = useRef(0);
   const headingGyr = useRef(0);
   const gravity = useRef({ x: 0, y: 0, z: 9.81 });
@@ -89,13 +89,11 @@ export const useHeading = (
         '2PI'
       );
 
-      setHeading((prevHeading) =>
-        HeadingDirectionFinding(
-          headingMag.current,
-          headingGyr.current,
-          prevHeadingMag,
-          prevHeading
-        )
+      heading.current = HeadingDirectionFinding(
+        headingMag.current,
+        headingGyr.current,
+        prevHeadingMag,
+        heading.current
       );
     }
   };

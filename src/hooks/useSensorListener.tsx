@@ -6,8 +6,7 @@ import {
   ThreeAxisMeasurement,
 } from 'expo-sensors';
 import BackgroundGeolocation from 'react-native-background-geolocation';
-import { AppState, Platform } from 'react-native';
-import BackgroundTimer from 'react-native-background-timer';
+import { Platform } from 'react-native';
 import { SensorDataRefArray } from '../types';
 
 export const useSensorListener = (
@@ -21,7 +20,6 @@ export const useSensorListener = (
   const gyr = useRef<ThreeAxisMeasurement>(initSensorData);
 
   const bgGeo = BackgroundGeolocation;
-  const bgTime = BackgroundTimer;
   const currentData: SensorDataRefArray = [acc, mag, gyr];
   let timeId: ReturnType<typeof setInterval>;
 
@@ -29,28 +27,15 @@ export const useSensorListener = (
     bgGeo.watchPosition(
       (location) => {
         console.log('mode: backgroundWatch');
-        // bgTime.stopBackgroundTimer();
         subscribe();
+        clearInterval(timeId);
+        timeId = setInterval(() => callback(currentData), interval);
       },
       (error) => {
         throw error;
       },
-      { interval: 60000 }
+      { interval }
     );
-  };
-
-  const backgroundTimer = () => {
-    bgTime.runBackgroundTimer(() => {
-      subscribe();
-    }, interval);
-  };
-
-  const backgroundTask = () => {
-    bgGeo.startBackgroundTask().then((taskId) => {
-      console.log('mode: backgroundTask');
-      subscribe();
-      bgGeo.stopBackgroundTask(taskId);
-    });
   };
 
   const subscribe = () => {
@@ -116,29 +101,13 @@ export const useSensorListener = (
           bgGeo.start();
         }
         backgroundWatch();
-        // backgroundTimer();
-        backgroundTask();
       }
     );
 
-    timeId = setInterval(() => callback(currentData), interval);
-    const appState = AppState.addEventListener('change', (state) => {
-      if (state === 'background') {
-        // bgTime.stopBackgroundTimer();
-        unsubscribe().then((msg) => {
-          backgroundTask();
-          // backgroundTimer();
-        });
-      }
-    });
-
     return () => {
       unsubscribe().then((msg) => {
-        /* @ts-ignore */
-        appState.remove();
         bgGeo.stopWatchPosition();
         bgGeo.stop();
-        bgTime.stopBackgroundTimer();
         clearInterval(timeId);
       });
     };
