@@ -23,13 +23,11 @@ export const useSensorListener = (
   const currentData: SensorDataRefArray = [acc, mag, gyr];
   let timeId: ReturnType<typeof setInterval>;
 
+  // Background process
   const backgroundWatch = () => {
     bgGeo.watchPosition(
       (location) => {
-        console.log('mode: backgroundWatch');
         subscribe();
-        clearInterval(timeId);
-        timeId = setInterval(() => callback(currentData), interval);
       },
       (error) => {
         throw error;
@@ -76,6 +74,8 @@ export const useSensorListener = (
           );
       }
     });
+    clearInterval(timeId);
+    timeId = setInterval(() => callback(currentData), interval);
   };
 
   const unsubscribe = () => {
@@ -103,6 +103,7 @@ export const useSensorListener = (
         backgroundWatch();
       }
     );
+    subscribe();
 
     return () => {
       unsubscribe().then((msg) => {

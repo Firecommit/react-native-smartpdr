@@ -1,6 +1,7 @@
 import { RefObject, useRef, useState } from 'react';
 import { AttitudeData, SensorDataRefObj } from '../types';
 import {
+  AngleDiff,
   AngleRange,
   atan2,
   HeadingDirectionFinding,
@@ -13,12 +14,12 @@ import {
 export const useHeading = (
   attitude: RefObject<AttitudeData>
 ): [
-  RefObject<number>,
+  RefObject<{ origin: number; mag: number; gyr: number }>,
+  { origin: number; mag: number; gyr: number },
   ({ acc, mag, gyr }: SensorDataRefObj, interval: number) => void
 ] => {
-  const heading = useRef(0);
-  const headingMag = useRef(0);
-  const headingGyr = useRef(0);
+  const ref = useRef({ origin: 0, mag: 0, gyr: 0 });
+  const [state, setState] = useState({ origin: 0, mag: 0, gyr: 0 });
   const gravity = useRef({ x: 0, y: 0, z: 9.81 });
   const gyrAng = useRef({ x: 0, y: 0, z: 0 });
   const gyrAngQueue = useRef<string[]>([]);
@@ -42,15 +43,21 @@ export const useHeading = (
 
       // Magnetometer-based heading direction
       const magGcs = LCS2GCS(mag.current, { ...attitude.current, yaw: 0 });
-      const prevHeadingMag = headingMag.current;
-      headingMag.current = AngleRange(
+      const prevHeadingMag = ref.current.mag;
+      const headingMag = AngleRange(
         atan2(-magGcs.y, magGcs.x) - headingDecline - Math.PI / 2,
         '2PI'
       );
-      if (headingGyr.current % (Math.PI / 2) <= (5 * Math.PI) / 180) {
-        headingGyr.current = 0;
+      ref.current.mag = headingMag;
+      setState((s) => ({ ...s, mag: headingMag }));
+      if (ref.current.mag % (Math.PI / 4) <= (5 * Math.PI) / 180) {
+        ref.current.gyr = 0;
+        setState((r) => ({ ...r, gyr: 0 }));
       }
-      if (!headingGyr.current) headingGyr.current = headingMag.current;
+      if (!ref.current.gyr) {
+        ref.current.gyr = headingMag;
+        setState((r) => ({ ...r, gyr: headingMag }));
+      }
 
       // Gyroscope-based heading direction
       const gravityVector = LCS2GCS(
@@ -62,7 +69,7 @@ export const useHeading = (
       gyrAng.current.x += (gyr.current.x * interval) / 1000;
       gyrAng.current.y += (gyr.current.y * interval) / 1000;
       gyrAng.current.z += (gyr.current.z * interval) / 1000;
-      if (Math.abs(headingMag.current - prevHeadingMag) > biasThreshold) {
+      if (AngleDiff(ref.current.mag, prevHeadingMag) > biasThreshold) {
         gyrAngQueue.current.length = 0;
       } else {
         const currentGyrAng = gyrAng.current;
@@ -72,11 +79,11 @@ export const useHeading = (
         const start = JSON.parse(gyrAngQueue.current[0]);
         const end = JSON.parse(gyrAngQueue.current.slice(-1)[0]);
         bias.current.x =
-          (end.x - start.x) / ((gyrAngQueue.current.length * interval) / 1000);
+          (end.x - start.x) / (gyrAngQueue.current.length * (interval / 1000));
         bias.current.y =
-          (end.y - start.y) / ((gyrAngQueue.current.length * interval) / 1000);
+          (end.y - start.y) / (gyrAngQueue.current.length * (interval / 1000));
         bias.current.z =
-          (end.z - start.z) / ((gyrAngQueue.current.length * interval) / 1000);
+          (end.z - start.z) / (gyrAngQueue.current.length * (interval / 1000));
       }
       const calibrationGyr = {
         x: gyr.current.x - bias.current.x,
@@ -84,19 +91,23 @@ export const useHeading = (
         z: gyr.current.z - bias.current.z,
       };
       const gyrGcs = ScalarProjection(calibrationGyr, gravityVector);
-      headingGyr.current = AngleRange(
-        headingGyr.current - gyrGcs * (interval / 1000),
+      const headingGyr = AngleRange(
+        ref.current.gyr - gyrGcs * (interval / 1000),
         '2PI'
       );
+      ref.current.gyr = headingGyr;
+      setState((s) => ({ ...s, gyr: headingGyr }));
 
-      heading.current = HeadingDirectionFinding(
-        headingMag.current,
-        headingGyr.current,
+      const heading = HeadingDirectionFinding(
+        ref.current.mag,
+        ref.current.gyr,
         prevHeadingMag,
-        heading.current
+        ref.current.origin
       );
+      ref.current.origin = heading;
+      setState((s) => ({ ...s, origin: heading }));
     }
   };
 
-  return [heading, setHeadingSensors];
+  return [ref, state, setHeadingSensors];
 };

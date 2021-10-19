@@ -6,8 +6,7 @@ import { useSensorListener } from '../hooks/useSensorListener';
 
 export const backgroundTaskExample = () => {
   const [attitude, setAttitudeSensors] = useAttitude();
-  const [heading, setHeadingSensors] = useHeading(attitude);
-  const [render, setRender] = useState(0);
+  const [ref, state, setHeadingSensors] = useHeading(attitude);
   const interval = 100;
 
   useSensorListener(
@@ -15,10 +14,7 @@ export const backgroundTaskExample = () => {
     ([acc, mag, gyr]) => {
       setAttitudeSensors({ acc, mag });
       setHeadingSensors({ acc, mag, gyr }, interval);
-      if (heading.current) {
-        setRender(heading.current);
-        console.log(deg(heading.current));
-      }
+      if (ref.current) console.log(deg(ref.current?.origin));
     },
     interval
   );
@@ -33,7 +29,7 @@ export const backgroundTaskExample = () => {
         BackgroundTaskExample
       </Text>
       <Text style={{ fontSize: 14 }}>check your debug console log!</Text>
-      <Text style={{ fontSize: 14 }}>heading: {deg(render)}</Text>
+      <Text style={{ fontSize: 14 }}>heading: {deg(state.origin)}</Text>
     </View>
   );
 };

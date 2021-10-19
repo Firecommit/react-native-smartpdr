@@ -29,6 +29,10 @@ export const AngleRange = (rad: number, scope: '2PI' | 'PI'): number => {
   return tmp;
 };
 
+export const AngleDiff = (x: number, y: number) => {
+  return Math.abs(Math.atan2(Math.sin(x - y), Math.cos(x - y)));
+};
+
 export const ComplementaryFilter = (
   eulerAttitude: AttitudeData,
   gyrAttitude: AttitudeData,
@@ -184,7 +188,7 @@ export const HeadingDirectionFinding = (
   const weight = { prev: 2, mag: 1, gyr: 2, pmg: 1 / 5, mg: 1 / 3, pg: 1 / 4 };
   const [correlation, validation] = [5, 2].map((e) => (e * Math.PI) / 180);
   const [corrDiff, magDiff] = [headingGyr, prevHeadingMag].map((e) =>
-    Math.abs(headingMag - e)
+    AngleDiff(headingMag, e)
   );
   let heading = 0;
 
@@ -198,10 +202,13 @@ export const HeadingDirectionFinding = (
     } else {
       heading = weight.mg * (weight.mag * headingMag + weight.gyr * headingGyr);
     }
-  } else if (magDiff <= validation) {
-    heading = prevHeading;
-  } else {
-    heading = weight.pg * (weight.prev * prevHeading + weight.gyr * headingGyr);
+  } else if (corrDiff > correlation) {
+    if (magDiff <= validation) {
+      heading = prevHeading;
+    } else {
+      heading =
+        weight.pg * (weight.prev * prevHeading + weight.gyr * headingGyr);
+    }
   }
   return heading;
 };

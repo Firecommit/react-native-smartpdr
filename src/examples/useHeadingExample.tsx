@@ -6,7 +6,7 @@ import { useSensorListener } from '../hooks/useSensorListener';
 
 export const useHeadingExample = () => {
   const [attitude, setAttitudeSensors] = useAttitude();
-  const [heading, setHeadingSensors] = useHeading(attitude);
+  const [ref, state, setHeadingSensors] = useHeading(attitude);
 
   useSensorListener(
     'fusion',
@@ -17,14 +17,16 @@ export const useHeadingExample = () => {
     100
   );
 
-  const deg = (ang: number): string => {
-    return ((ang * 180) / Math.PI).toFixed(4);
+  const deg = (ang: number): number => {
+    return ang ? Number(((ang * 180) / Math.PI).toFixed(4)) : 0;
   };
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ fontSize: 20, marginBottom: 16 }}>useHeadingExample</Text>
-      <Text style={{ fontSize: 14 }}>heading: {deg(heading)}</Text>
+      <Text style={{ fontSize: 14 }}>headingMag: {deg(state.mag)}</Text>
+      <Text style={{ fontSize: 14 }}>headingGyr: {deg(state.gyr)}</Text>
+      <Text style={{ fontSize: 14 }}>heading: {deg(state.origin)}</Text>
     </View>
   );
 };
